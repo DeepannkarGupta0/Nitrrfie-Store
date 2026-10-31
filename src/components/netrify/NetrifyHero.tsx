@@ -26,7 +26,7 @@ export default function NetrifyHero({ onQuickView }: NetrifyHeroProps) {
             {/* Campus Tag */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-100/80 border border-[#ff782e]/20 text-[#ff782e] text-xs font-semibold tracking-wide">
               <span className="w-2 h-2 rounded-full bg-[#ff782e] animate-pulse" />
-              <span>NIT RAIPUR CAMPUS STORE</span>
+              <span>NITRRFIE • NIT RAIPUR</span>
               <span className="text-[#ff782e]/40">•</span>
               <span className="text-slate-700 font-bold">WINTER 2026 EDITION</span>
             </div>
@@ -39,7 +39,7 @@ export default function NetrifyHero({ onQuickView }: NetrifyHeroProps) {
 
             {/* Sub-headline */}
             <p className="text-base sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
-              The centralized merchandise storefront for the National Institute of Technology Raipur. Official committee drops, varsity outerwear, and commemorative apparel crafted for students, clubs, technical societies, and proud alumni.
+              The centralized merchandise storefront by <strong>NITRRFIE</strong> (NIT Raipur Foundation for Innovation and Entrepreneurship). Official committee drops, varsity outerwear, and commemorative apparel crafted for students, clubs, technical societies, and proud alumni.
             </p>
 
             {/* CTA Group */}

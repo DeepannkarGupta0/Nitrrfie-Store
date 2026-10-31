@@ -29,7 +29,7 @@ export default function NetrifyFooter() {
             </Link>
 
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-sm">
-              The centralized campus merchandise storefront associated with National Institute of Technology Raipur. Built to unite student bodies, committees, and alumni with authentic collegiate apparel.
+              The centralized campus merchandise storefront spearheaded by <strong>NITRRFIE</strong> (NIT Raipur Foundation for Innovation and Entrepreneurship), National Institute of Technology Raipur. Built to unite student bodies, committees, and alumni with authentic collegiate apparel.
             </p>
 
             <div className="pt-2 flex items-center gap-2 text-xs text-slate-400">
@@ -151,7 +151,7 @@ export default function NetrifyFooter() {
       <div className="border-t border-slate-900 bg-black/60 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
-            © 2026 Netrify. Institutional Merchandise Store associated with NIT Raipur. All rights reserved.
+            © 2026 Netrify. NITRRFIE (NIT Raipur Foundation for Innovation and Entrepreneurship) • NIT Raipur. All rights reserved.
           </div>
           <div className="flex items-center gap-2">
             <span>Crafted with</span>

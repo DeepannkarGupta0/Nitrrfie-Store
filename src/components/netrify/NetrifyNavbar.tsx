@@ -46,9 +46,11 @@ export default function NetrifyNavbar({ onOpenSearch }: NetrifyNavbarProps) {
                   <span className="w-2 h-2 rounded-full bg-[#ff782e]" />
                 </div>
                 <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-slate-500 -mt-1 flex items-center gap-1">
+                  <span>NITRRFIE</span>
+                  <span className="text-slate-300">•</span>
                   <span>NIT Raipur</span>
                   <span className="text-slate-300">•</span>
-                  <span className="text-[#ff782e]">Campus Drops</span>
+                  <span className="text-[#ff782e]">Store</span>
                 </div>
               </div>
             </Link>

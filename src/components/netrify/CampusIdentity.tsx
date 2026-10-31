@@ -21,7 +21,7 @@ export default function CampusIdentity() {
             </h2>
 
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-              Netrify was created to eliminate fragmented merchandise orders, delayed unbranded vendors, and unverified mockups. Every piece in our centralized inventory is co-designed with committee heads, manufactured to heavyweight collegiate standards, and delivered directly to students on campus.
+              Netrify is spearheaded by <strong>NITRRFIE</strong> (NIT Raipur Foundation for Innovation and Entrepreneurship) to provide an authentic, unified merchandise platform. Every piece in our centralized inventory is co-designed with committee heads, manufactured to heavyweight collegiate standards, and delivered directly to students across the campus.
             </p>
 
             <div className="space-y-3 pt-2">

@@ -11,10 +11,10 @@ export default function AnnouncementBar() {
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-white">
             <Sparkles className="w-3 h-3 text-white" />
-            Official Campus Store
+            NITRRFIE • Official Store
           </span>
           <span className="hidden md:inline-block text-white/90 font-normal">
-            National Institute of Technology Raipur
+            NIT Raipur Foundation for Innovation and Entrepreneurship
           </span>
         </div>
 
