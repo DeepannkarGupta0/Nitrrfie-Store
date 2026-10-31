@@ -27,7 +27,7 @@ export default function FeaturedProducts({ onQuickView }: FeaturedProductsProps)
     addItem({
       id: product.id,
       slug: product.slug,
-      sku: `NETRIFY-${product.id}-L`,
+      sku: `NITRRFIE-${product.id}-L`,
       name: product.name,
       tagline: product.tagline,
       price: product.price,

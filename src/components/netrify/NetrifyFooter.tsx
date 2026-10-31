@@ -12,18 +12,17 @@ export default function NetrifyFooter() {
           {/* Brand Col */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff782e] to-[#ff9457] flex items-center justify-center text-white font-black text-xl shadow-md shadow-[#ff782e]/20 font-sans">
-                N
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff782e] to-[#ff9457] flex items-center justify-center text-white font-black text-xs tracking-tight shadow-md shadow-[#ff782e]/20 font-sans">
+                NIT
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-sans text-2xl font-black tracking-tight text-white">
-                    NETRIFY
+                  <span className="font-sans text-xl sm:text-2xl font-black tracking-tight text-white">
+                    NITRRFIE <span className="text-[#ff782e]">STORE</span>
                   </span>
-                  <span className="w-2 h-2 rounded-full bg-[#ff782e]" />
                 </div>
-                <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-slate-400 -mt-1">
-                  NIT Raipur Institutional Store
+                <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-slate-400 -mt-0.5">
+                  NIT Raipur Foundation for Innovation and Entrepreneurship
                 </div>
               </div>
             </Link>
@@ -135,11 +134,11 @@ export default function NetrifyFooter() {
               <li className="pt-2">
                 <span className="text-[11px] text-slate-500 block">Queries & Feedback:</span>
                 <a
-                  href="mailto:support@netrify.in"
+                  href="mailto:contact@nitrrfie.in"
                   className="text-white hover:text-[#ff782e] transition-colors font-medium flex items-center gap-1.5 mt-0.5"
                 >
                   <Mail className="w-3.5 h-3.5 text-[#ff782e]" />
-                  support@netrify.in
+                  contact@nitrrfie.in
                 </a>
               </li>
             </ul>
@@ -151,7 +150,7 @@ export default function NetrifyFooter() {
       <div className="border-t border-slate-900 bg-black/60 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
-            © 2026 Netrify. NITRRFIE (NIT Raipur Foundation for Innovation and Entrepreneurship) • NIT Raipur. All rights reserved.
+            © 2026 NITRRFIE Store (NIT Raipur Foundation for Innovation and Entrepreneurship) • NIT Raipur. All rights reserved.
           </div>
           <div className="flex items-center gap-2">
             <span>Crafted with</span>

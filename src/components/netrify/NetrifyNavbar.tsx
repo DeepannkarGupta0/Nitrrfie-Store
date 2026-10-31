@@ -35,22 +35,17 @@ export default function NetrifyNavbar({ onOpenSearch }: NetrifyNavbarProps) {
           {/* Left: Brand Identity */}
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff782e] to-[#ff9457] flex items-center justify-center text-white font-black text-xl shadow-md shadow-[#ff782e]/25 group-hover:scale-105 transition-transform font-sans">
-                N
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff782e] to-[#ff9457] flex items-center justify-center text-white font-black text-xs tracking-tight shadow-md shadow-[#ff782e]/25 group-hover:scale-105 transition-transform font-sans">
+                NIT
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-sans text-2xl font-black tracking-tight text-slate-900">
-                    NETRIFY
+                  <span className="font-sans text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+                    NITRRFIE <span className="text-[#ff782e]">STORE</span>
                   </span>
-                  <span className="w-2 h-2 rounded-full bg-[#ff782e]" />
                 </div>
-                <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-slate-500 -mt-1 flex items-center gap-1">
-                  <span>NITRRFIE</span>
-                  <span className="text-slate-300">•</span>
-                  <span>NIT Raipur</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="text-[#ff782e]">Store</span>
+                <div className="text-[9px] sm:text-[10px] font-sans font-bold uppercase tracking-wider text-slate-500 -mt-0.5 flex items-center gap-1">
+                  <span>NIT Raipur Foundation for Innovation & Entrepreneurship</span>
                 </div>
               </div>
             </Link>
@@ -188,7 +183,7 @@ export default function NetrifyNavbar({ onOpenSearch }: NetrifyNavbarProps) {
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
-            About Netrify
+            About NITRRFIE
           </a>
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
@@ -201,7 +196,7 @@ export default function NetrifyNavbar({ onOpenSearch }: NetrifyNavbarProps) {
             ) : (
               <div className="flex items-center gap-3">
                 <UserButton />
-                <span className="text-xs text-slate-600 font-medium">Logged in to Netrify</span>
+                <span className="text-xs text-slate-600 font-medium">Logged in to NITRRFIE Store</span>
               </div>
             )}
           </div>

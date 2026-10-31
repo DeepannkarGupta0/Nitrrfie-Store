@@ -42,7 +42,7 @@ export default function QuickViewModal({
     addItem({
       id: product.id,
       slug: product.slug,
-      sku: `NETRIFY-${product.id}-${selectedSize}`,
+      sku: `NITRRFIE-${product.id}-${selectedSize}`,
       name: product.name,
       tagline: product.tagline,
       price: product.price,

@@ -18,8 +18,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Netrify — Official Institutional Merchandise Store | NIT Raipur",
-  description: "Official merchandise store by NITRRFIE (NIT Raipur Foundation for Innovation and Entrepreneurship), National Institute of Technology Raipur. Committee drops, varsity outerwear, and commemorative campus apparel.",
+  title: "NITRRFIE Store — Official Merchandise Store | NIT Raipur",
+  description: "Official institutional merchandise store of NITRRFIE (NIT Raipur Foundation for Innovation and Entrepreneurship), National Institute of Technology Raipur. Committee drops, varsity outerwear, and commemorative campus apparel.",
 };
 
 import LayoutWrapper from "@/components/layout/LayoutWrapper";
