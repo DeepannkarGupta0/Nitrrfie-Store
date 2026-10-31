@@ -1,7 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Marquee from "../ui/Marquee";
 import { footerNav } from "@/config/navigation";
+
 export default function Footer() {
+  const pathname = usePathname();
+
+  // On the homepage, Netrify uses its dedicated NetrifyFooter
+  if (pathname === "/") {
+    return null;
+  }
   return (
     <footer className="bg-cream border-t-brutal border-t-3 border-brutal mt-auto">
       <div className="border-b-brutal border-b-3">

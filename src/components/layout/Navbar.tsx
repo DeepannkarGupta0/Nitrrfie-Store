@@ -21,6 +21,11 @@ export default function Navbar() {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href;
 
+  // On the homepage, Netrify uses its dedicated NetrifyNavbar
+  if (pathname === "/") {
+    return null;
+  }
+
   // Helper to render a link, applying active and enabled styles
   const renderLink = (item: NavConfigItem, extraClass = "") => {
     if (!item.enabled) return null;

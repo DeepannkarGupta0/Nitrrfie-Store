@@ -18,9 +18,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Unwearable — Fashion is Dead",
-  description: "Raw, high-contrast brutalist e-commerce. Wear the void.",
+  title: "Netrify — Official Institutional Merchandise Store | NIT Raipur",
+  description: "Official merchandise store associated with National Institute of Technology Raipur. Committee drops, varsity outerwear, and commemorative campus apparel.",
 };
+
+import LayoutWrapper from "@/components/layout/LayoutWrapper";
 
 export default function RootLayout({
   children,
@@ -33,9 +35,7 @@ export default function RootLayout({
         <body className="min-h-full flex flex-col bg-cream text-brutal-black" suppressHydrationWarning>
           <CartProvider>
             <Navbar />
-            <main className="flex-1 pt-[72px]">
-              {children}
-            </main>
+            <LayoutWrapper>{children}</LayoutWrapper>
             <Footer />
           </CartProvider>
         </body>

@@ -10,16 +10,32 @@
   --shadow-brutal: 4px 4px 0 #0A0A0A;
   --shadow-brutal-lg: 8px 8px 0 #0A0A0A;
   --border-brutal: 3px;
+
+  /* Netrify Institutional Color Palette (Inspired by NITRRFIE) */
+  --color-netrify-orange: #ff782e;
+  --color-netrify-orange-dark: #e05b12;
+  --color-netrify-charcoal: #212121;
+  --color-netrify-dark: #0f172a;
+  --color-netrify-slate: #334155;
+  --color-netrify-muted: #64748b;
+  --color-netrify-bg: #f8fafc;
+  --color-netrify-border: #e2e8f0;
 }
 
 @layer base {
-  * {
+  /* Only enforce zero radius for non-netrify parts of the site */
+  :where(:not(.netrify-root, .netrify-root *)) {
     border-radius: 0;
   }
 
-  ::selection {
+  :where(:not(.netrify-root, .netrify-root *))::selection {
     background-color: #FF3E00;
     color: #F5F0E8;
+  }
+
+  .netrify-root ::selection {
+    background-color: #ff782e;
+    color: #ffffff;
   }
 
   ::-webkit-scrollbar {
