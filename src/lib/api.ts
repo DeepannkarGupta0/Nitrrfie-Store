@@ -8,19 +8,21 @@ export async function getProducts(): Promise<Product[]> {
       .from("products")
       .select("*");
 
-    if (error || !data || data.length === 0) {
-      console.warn("No products found in Supabase or error occurred, using local data.");
-      return localProducts;
+    if (error || !data || data.length === 0 || data.some(p => p.slug === "404-not-found-tee")) {
+      return localProducts.filter(p => !p.id.startsWith("legacy-"));
     }
 
     return data as Product[];
   } catch (error) {
     console.error("Error fetching products:", error);
-    return localProducts;
+    return localProducts.filter(p => !p.id.startsWith("legacy-"));
   }
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
+  const localMatch = localProducts.find(p => p.slug === slug);
+  if (localMatch) return localMatch;
+
   try {
     const { data, error } = await supabase
       .from("products")
@@ -29,12 +31,12 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       .single();
 
     if (error || !data) {
-      return localProducts.find(p => p.slug === slug) || null;
+      return null;
     }
 
     return data as Product;
   } catch (error) {
-    return localProducts.find(p => p.slug === slug) || null;
+    return null;
   }
 }
 export async function addProduct(

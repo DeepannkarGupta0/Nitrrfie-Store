@@ -13,9 +13,9 @@ export default async function CartPage() {
       <CartClient />
 
       {userId && (
-        <div className="px-4 py-8 max-w-4xl mx-auto w-full border-t-brutal border-t-3 border-brutal-black pt-12">
-          <h2 className="font-mono text-3xl font-bold uppercase mb-8">
-            Your Account
+        <div className="px-4 py-8 max-w-4xl mx-auto w-full border-t border-slate-200 pt-12">
+          <h2 className="font-sans text-2xl font-bold mb-6 text-slate-900">
+            Your Orders & History
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">

@@ -23,17 +23,7 @@
 }
 
 @layer base {
-  /* Only enforce zero radius for non-netrify parts of the site */
-  :where(:not(.netrify-root, .netrify-root *)) {
-    border-radius: 0;
-  }
-
-  :where(:not(.netrify-root, .netrify-root *))::selection {
-    background-color: #FF3E00;
-    color: #F5F0E8;
-  }
-
-  .netrify-root ::selection {
+  ::selection {
     background-color: #ff782e;
     color: #ffffff;
   }

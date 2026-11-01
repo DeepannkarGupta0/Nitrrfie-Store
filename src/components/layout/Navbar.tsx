@@ -1,197 +1,306 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { usePathname, useRouter } from "next/navigation";
+import { Search, ShoppingBag, Menu, X, Sparkles, MapPin, ShieldCheck } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
-import { mainNav, accountNav, adminNav, NavConfigItem } from "@/config/navigation";
-import { usePathname } from "next/navigation";
-import { Bell } from "lucide-react";
+import SearchModal from "@/components/netrify/SearchModal";
+import type { NetrifyProduct } from "@/data/netrifyProducts";
 
 export default function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
   const { totalItems } = useCart();
   const { isSignedIn, user } = useUser();
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const adminRole = "admin"; // role is static and defined server‑side
+  const adminRole = "admin";
   const userRole = (user?.publicMetadata?.role as string | undefined)?.toLowerCase();
   const isAdmin = isSignedIn && userRole === adminRole;
 
-  const pathname = usePathname();
-  const isActive = (href: string) => pathname === href;
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  // On the homepage, Netrify uses its dedicated NetrifyNavbar
-  if (pathname === "/") {
-    return null;
-  }
+  // Keyboard shortcut for search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
-  // Helper to render a link, applying active and enabled styles
-  const renderLink = (item: NavConfigItem, extraClass = "") => {
-    if (!item.enabled) return null;
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={`font-mono text-sm uppercase hover:text-accent transition-colors ${extraClass} ${isActive(item.href) ? "underline font-bold" : ""}`}
-      >
-        {item.label}
-      </Link>
-    );
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  };
+
+  const handleSelectProduct = (product: NetrifyProduct) => {
+    setSearchOpen(false);
+    router.push(`/product/${product.slug}`);
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-cream border-b-brutal border-brutal border-b-3">
-      <nav aria-label="Primary Navigation" className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
-        <Link href="/" className="font-mono text-2xl font-bold uppercase tracking-tight hover:text-accent transition-colors">
-          Unwearable
-        </Link>
+    <>
+      {/* ── Top Announcement Bar ── */}
+      <div className="bg-[#ff782e] text-white text-xs font-sans tracking-wide z-50 border-b border-[#e05b12]/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-white">
+              <Sparkles className="w-3 h-3 text-white" />
+              NITRRFIE • Official Store
+            </span>
+            <span className="hidden md:inline-block text-white/90 font-normal">
+              NIT Raipur Foundation for Innovation and Entrepreneurship
+            </span>
+          </div>
 
-        {/* Desktop navigation */}
-        <div className="hidden md:flex items-center gap-8">
-          {/* Main navigation */}
-          {mainNav.map((item) => renderLink(item))}
+          <div className="flex items-center gap-2 text-center text-xs font-medium">
+            <span className="truncate max-w-[280px] sm:max-w-md lg:max-w-xl">
+              Official Campus Drops Live: <strong className="font-bold underline decoration-white/40">E-Cell Bomber</strong>, <strong className="font-bold underline decoration-white/40">TCP Tech Tees</strong> & <strong className="font-bold underline decoration-white/40">I-Cell F1</strong>
+            </span>
+          </div>
 
-          {/* Account navigation (signed-in only) */}
-          {isSignedIn && accountNav.map((item) => renderLink(item))}
-
-          {/* Admin navigation */}
-          {isAdmin && adminNav.map((item) => renderLink(item))}
-
-          {/* Cart link */}
-          <Link
-            href="/cart"
-            className="font-mono text-sm uppercase flex items-center gap-2 hover:text-accent transition-colors"
-          >
-            Cart
-            {totalItems > 0 && (
-              <span className="bg-accent text-cream px-2 py-0.5 text-xs font-bold">{totalItems}</span>
-            )}
-          </Link>
-
-          {/* Notifications Link (signed in only) */}
-          {isSignedIn && (
-            <Link
-              href="/notifications"
-              className="hover:text-accent transition-colors flex items-center justify-center"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-            </Link>
-          )}
-
-          {/* Auth buttons */}
-          <div className="border-l-brutal border-l-2 pl-8 flex items-center">
-            {!isSignedIn ? (
-              <SignInButton mode="modal">
-                <button type="button" className="font-mono text-sm uppercase hover:text-accent transition-colors">Sign In</button>
-              </SignInButton>
-            ) : (
-              <UserButton
-                appearance={{
-                  elements: {
-                    userButtonBox: "border-brutal border-2 hover:scale-105 transition-transform",
-                  },
-                }}
-              />
-            )}
+          <div className="hidden lg:flex items-center gap-4 text-[11px] font-medium text-white/90">
+            <span className="inline-flex items-center gap-1 text-white/95">
+              <MapPin className="w-3 h-3" />
+              Campus Handover Desk
+            </span>
+            <span className="text-white/40">|</span>
+            <span className="inline-flex items-center gap-1 text-white/95">
+              <ShieldCheck className="w-3 h-3" />
+              100% Verified Merchandise
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Mobile hamburger */}
-        <button
-          type="button"
-          className="md:hidden border-brutal border-3 p-2 bg-cream"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle mobile menu"
-          aria-expanded={mobileOpen}
-          aria-controls="mobile-menu"
-        >
-          <div className="w-6 h-0.5 bg-brutal-black mb-1.5 transition-all" />
-          <div className="w-6 h-0.5 bg-brutal-black mb-1.5 transition-all" />
-          <div className="w-6 h-0.5 bg-brutal-black transition-all" />
-        </button>
-      </nav>
+      {/* ── Main Sticky Header ── */}
+      <header
+        className={`sticky top-0 z-40 bg-white transition-all duration-200 border-b ${
+          scrolled ? "border-slate-200 shadow-md shadow-slate-900/5" : "border-slate-100"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-18 flex items-center justify-between gap-4">
+            {/* Left: Brand Identity */}
+            <div className="flex items-center gap-6">
+              <Link href="/" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff782e] to-[#ff9457] flex items-center justify-center text-white font-black text-xs tracking-tight shadow-md shadow-[#ff782e]/25 group-hover:scale-105 transition-transform font-sans">
+                  NIT
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-sans text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+                      NITRRFIE <span className="text-[#ff782e]">STORE</span>
+                    </span>
+                  </div>
+                  <div className="text-[9px] sm:text-[10px] font-sans font-bold uppercase tracking-wider text-slate-500 -mt-0.5 flex items-center gap-1">
+                    <span>NIT Raipur Foundation for Innovation & Entrepreneurship</span>
+                  </div>
+                </div>
+              </Link>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            id="mobile-menu"
-            className="md:hidden bg-cream border-b-brutal border-b-3 overflow-hidden"
-          >
-            <div className="flex flex-col p-4 gap-4">
-              {/* Main */}
-              {mainNav.filter(i => i.enabled).map((item) => (
+              {/* Desktop Nav Links */}
+              <nav className="hidden lg:flex items-center gap-1 pl-4">
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-cream hover:bg-accent hover:text-cream transition-colors ${isActive(item.href) ? "font-bold bg-accent text-cream" : ""}`}
-                  onClick={() => setMobileOpen(false)}
+                  href="/"
+                  className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                    isActive("/") && pathname === "/"
+                      ? "text-[#ff782e] font-bold bg-orange-50/70"
+                      : "text-slate-700 hover:text-[#ff782e] hover:bg-slate-50"
+                  }`}
                 >
-                  {item.label}
+                  Home
                 </Link>
-              ))}
-
-              {/* Account */}
-              {isSignedIn &&
-                accountNav.filter(i => i.enabled).map((item) => (
+                <Link
+                  href="/shop"
+                  className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                    isActive("/shop")
+                      ? "text-[#ff782e] font-bold bg-orange-50/70"
+                      : "text-slate-700 hover:text-[#ff782e] hover:bg-slate-50"
+                  }`}
+                >
+                  All Campus Drops
+                </Link>
+                <Link
+                  href="/support"
+                  className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                    isActive("/support")
+                      ? "text-[#ff782e] font-bold bg-orange-50/70"
+                      : "text-slate-700 hover:text-[#ff782e] hover:bg-slate-50"
+                  }`}
+                >
+                  Student Helpdesk & Pickup
+                </Link>
+                {isSignedIn && (
                   <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-cream hover:bg-accent hover:text-cream transition-colors ${isActive(item.href) ? "font-bold bg-accent text-cream" : ""}`}
-                    onClick={() => setMobileOpen(false)}
+                    href="/account/orders"
+                    className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                      isActive("/account")
+                        ? "text-[#ff782e] font-bold bg-orange-50/70"
+                        : "text-slate-700 hover:text-[#ff782e] hover:bg-slate-50"
+                    }`}
                   >
-                    {item.label}
+                    My Orders
                   </Link>
-                ))}
-
-              {/* Admin */}
-              {isAdmin &&
-                adminNav.filter(i => i.enabled).map((item) => (
+                )}
+                {isAdmin && (
                   <Link
-                    key={item.href}
-                    href={item.href}
-                    className="font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-accent text-cream hover:bg-brutal-black transition-colors"
-                    onClick={() => setMobileOpen(false)}
+                    href="/admin"
+                    className="px-3.5 py-2 text-xs font-bold text-amber-600 rounded-lg hover:bg-amber-50 transition-colors"
                   >
-                    {item.label}
+                    Admin Panel
                   </Link>
-                ))}
+                )}
+              </nav>
+            </div>
 
-              {/* Cart */}
+            {/* Right: Actions */}
+            <div className="flex items-center gap-3">
+              {/* Quick Search Button */}
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-500 bg-slate-100 hover:bg-slate-100/90 rounded-full border border-slate-200 transition-colors cursor-pointer"
+                title="Search campus merchandise"
+              >
+                <Search className="w-4 h-4 text-slate-400" />
+                <span className="hidden sm:inline font-sans">Search campus drops...</span>
+                <kbd className="hidden sm:inline text-[10px] font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-500">
+                  /
+                </kbd>
+              </button>
+
+              {/* Cart Link with Badge */}
               <Link
                 href="/cart"
-                className="font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-cream hover:bg-accent hover:text-cream transition-colors flex justify-center items-center gap-3"
-                onClick={() => setMobileOpen(false)}
+                className="relative p-2.5 rounded-full text-slate-700 hover:text-[#ff782e] hover:bg-slate-50 border border-slate-200 transition-colors"
+                aria-label="View shopping cart"
               >
-                Cart
+                <ShoppingBag className="w-5 h-5" />
                 {totalItems > 0 && (
-                  <span className="bg-accent text-cream px-2 py-1 text-sm font-bold">{totalItems}</span>
+                  <span className="absolute -top-1 -right-1 bg-[#ff782e] text-white text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center font-sans shadow-sm">
+                    {totalItems}
+                  </span>
                 )}
               </Link>
 
-              {/* Auth */}
-              <div className="pt-4 border-t-brutal border-t-3">
+              {/* Clerk Authentication */}
+              <div className="hidden sm:flex items-center pl-1 border-l border-slate-200">
                 {!isSignedIn ? (
                   <SignInButton mode="modal">
-                    <button className="w-full font-mono text-xl uppercase border-brutal border-3 p-4 text-center bg-accent text-cream hover:bg-brutal-black transition-colors">
+                    <button className="px-3.5 py-2 text-xs font-bold font-sans text-slate-800 hover:text-[#ff782e] transition-colors cursor-pointer">
                       Sign In
                     </button>
                   </SignInButton>
                 ) : (
-                  <div className="flex items-center justify-center p-4 border-brutal border-3 bg-cream">
-                    <UserButton showName />
+                  <div className="pl-2">
+                    <UserButton
+                      appearance={{
+                        elements: {
+                          avatarBox: "w-8 h-8 rounded-full border border-slate-200",
+                        },
+                      }}
+                    />
                   </div>
                 )}
               </div>
+
+              {/* Mobile Menu Toggle */}
+              <button
+                onClick={() => setMobileOpen(!mobileOpen)}
+                className="lg:hidden p-2 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+                aria-label="Toggle navigation menu"
+              >
+                {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
-          </motion.div>
+          </div>
+        </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileOpen && (
+          <div className="lg:hidden border-t border-slate-100 bg-white px-4 pt-3 pb-6 space-y-2">
+            <Link
+              href="/"
+              onClick={() => setMobileOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Home
+            </Link>
+            <Link
+              href="/shop"
+              onClick={() => setMobileOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              All Campus Drops
+            </Link>
+            <Link
+              href="/support"
+              onClick={() => setMobileOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Student Helpdesk & Pickup
+            </Link>
+            {isSignedIn && (
+              <Link
+                href="/account/orders"
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                My Orders
+              </Link>
+            )}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm font-bold text-amber-600 hover:bg-amber-50"
+              >
+                Admin Panel
+              </Link>
+            )}
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              {!isSignedIn ? (
+                <SignInButton mode="modal">
+                  <button className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold font-sans">
+                    Student Sign In
+                  </button>
+                </SignInButton>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <UserButton />
+                  <span className="text-xs text-slate-600 font-medium">Logged in to NITRRFIE Store</span>
+                </div>
+              )}
+            </div>
+          </div>
         )}
-      </AnimatePresence>
-    </header>
+      </header>
+
+      {/* Global Search Modal */}
+      <SearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelectProduct={handleSelectProduct}
+      />
+    </>
   );
 }

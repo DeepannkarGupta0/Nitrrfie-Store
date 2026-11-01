@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className={`${spaceMono.variable} ${inter.variable} h-full antialiased`}>
-        <body className="min-h-full flex flex-col bg-cream text-brutal-black" suppressHydrationWarning>
+        <body className="min-h-full flex flex-col bg-[#f8fafc] text-slate-900 font-sans antialiased" suppressHydrationWarning>
           <CartProvider>
             <Navbar />
             <LayoutWrapper>{children}</LayoutWrapper>
