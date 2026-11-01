@@ -10,7 +10,14 @@ interface FeaturedProductsProps {
   onQuickView: (product: NetrifyProduct) => void;
 }
 
-type FilterCategory = "all" | "Outerwear" | "Club Drops" | "Campus Essentials" | "Technical Societies";
+type FilterCategory =
+  | "all"
+  | "Outerwear"
+  | "Campus Essentials"
+  | "Technical Societies"
+  | "Club Drops"
+  | "Accessories"
+  | "Stationery & Gifts";
 
 export default function FeaturedProducts({ onQuickView }: FeaturedProductsProps) {
   const { addItem } = useCart();
@@ -65,10 +72,11 @@ export default function FeaturedProducts({ onQuickView }: FeaturedProductsProps)
           <div className="flex flex-wrap items-center gap-2">
             {[
               { id: "all", label: "All Drops" },
-              { id: "Outerwear", label: "Varsity & Outerwear" },
-              { id: "Club Drops", label: "Club & Cell Specials" },
-              { id: "Campus Essentials", label: "Institutional Tees" },
-              { id: "Technical Societies", label: "Tech Societies (TCP)" },
+              { id: "Outerwear", label: "Outerwear & Hoodies" },
+              { id: "Campus Essentials", label: "Collegiate Tees" },
+              { id: "Technical Societies", label: "Tech Societies" },
+              { id: "Accessories", label: "Accessories & Bottles" },
+              { id: "Stationery & Gifts", label: "Executive Gift Sets" },
             ].map((tab) => {
               const isActive = activeFilter === tab.id;
               return (

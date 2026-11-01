@@ -19,10 +19,11 @@ export default function ShopPage() {
   const categories = [
     "All",
     "Outerwear",
-    "Club Drops",
     "Campus Essentials",
     "Technical Societies",
-    "Event Specials",
+    "Club Drops",
+    "Accessories",
+    "Stationery & Gifts",
   ];
 
   const filteredProducts = useMemo(() => {
