@@ -74,8 +74,8 @@ export default function ShopPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-100/80 border border-[#ff782e]/20 text-[#ff782e] text-xs font-semibold tracking-wide">
-              <span className="w-2 h-2 rounded-full bg-[#ff782e] animate-pulse" />
-              <span>NITRRFIE CENTRAL STORE</span>
+              <span className="w-2 h-2 rounded-full bg-[#ff782e]" />
+              <span>NIT RAIPUR OFFICIAL STORE</span>
               <span className="text-[#ff782e]/40">•</span>
               <span className="text-slate-700 font-bold">ALL OFFICIAL MERCHANDISE</span>
             </div>

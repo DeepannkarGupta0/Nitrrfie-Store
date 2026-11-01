@@ -16,7 +16,7 @@ export default function CartSummary() {
           Order Summary
         </h3>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#ff782e]">
-          NITRRFIE Verified
+          NIT Raipur Official
         </span>
       </div>
 

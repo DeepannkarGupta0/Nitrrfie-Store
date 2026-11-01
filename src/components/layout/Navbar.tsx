@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Search, ShoppingBag, Menu, X, Sparkles, MapPin, ShieldCheck } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -64,16 +65,16 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-white">
               <Sparkles className="w-3 h-3 text-white" />
-              NITRRFIE • Official Store
+              NIT Raipur • Official Store
             </span>
             <span className="hidden md:inline-block text-white/90 font-normal">
-              NIT Raipur Foundation for Innovation and Entrepreneurship
+              National Institute of Technology Raipur
             </span>
           </div>
 
           <div className="flex items-center gap-2 text-center text-xs font-medium">
             <span className="truncate max-w-[280px] sm:max-w-md lg:max-w-xl">
-              Official Campus Drops Live: <strong className="font-bold underline decoration-white/40">E-Cell Bomber</strong>, <strong className="font-bold underline decoration-white/40">TCP Tech Tees</strong> & <strong className="font-bold underline decoration-white/40">I-Cell F1</strong>
+              Official Campus Drops Live: Hoodies, Varsity Jackets, T-Shirts & Accessories
             </span>
           </div>
 
@@ -85,7 +86,7 @@ export default function Navbar() {
             <span className="text-white/40">|</span>
             <span className="inline-flex items-center gap-1 text-white/95">
               <ShieldCheck className="w-3 h-3" />
-              100% Verified Merchandise
+              Official Merchandise
             </span>
           </div>
         </div>
@@ -102,17 +103,23 @@ export default function Navbar() {
             {/* Left: Brand Identity */}
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center gap-3 group">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff782e] to-[#ff9457] flex items-center justify-center text-white font-black text-xs tracking-tight shadow-md shadow-[#ff782e]/25 group-hover:scale-105 transition-transform font-sans">
-                  NIT
+                <div className="relative w-11 h-11 rounded-full overflow-hidden border border-slate-200 shadow-sm group-hover:scale-105 transition-transform shrink-0">
+                  <Image
+                    src="/images/logo/nit-raipur-logo.png"
+                    alt="NIT Raipur Store"
+                    fill
+                    className="object-cover"
+                    priority
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-sans text-xl sm:text-2xl font-black tracking-tight text-slate-900">
-                      NITRRFIE <span className="text-[#ff782e]">STORE</span>
+                      NIT RAIPUR <span className="text-[#ff782e]">STORE</span>
                     </span>
                   </div>
                   <div className="text-[9px] sm:text-[10px] font-sans font-bold uppercase tracking-wider text-slate-500 -mt-0.5 flex items-center gap-1">
-                    <span>NIT Raipur Foundation for Innovation & Entrepreneurship</span>
+                    <span>National Institute of Technology Raipur</span>
                   </div>
                 </div>
               </Link>

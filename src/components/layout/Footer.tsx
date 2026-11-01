@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Mail, MapPin, Heart } from "lucide-react";
 
@@ -12,23 +13,28 @@ export default function Footer() {
           {/* Brand Col */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff782e] to-[#ff9457] flex items-center justify-center text-white font-black text-xs tracking-tight shadow-md shadow-[#ff782e]/20 font-sans">
-                NIT
+              <div className="relative w-11 h-11 rounded-full overflow-hidden border border-slate-800 shadow-sm shrink-0 group-hover:scale-105 transition-transform">
+                <Image
+                  src="/images/logo/nit-raipur-logo.png"
+                  alt="NIT Raipur Store"
+                  fill
+                  className="object-cover"
+                />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-sans text-xl sm:text-2xl font-black tracking-tight text-white">
-                    NITRRFIE <span className="text-[#ff782e]">STORE</span>
+                    NIT RAIPUR <span className="text-[#ff782e]">STORE</span>
                   </span>
                 </div>
                 <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-slate-400 -mt-0.5">
-                  NIT Raipur Foundation for Innovation and Entrepreneurship
+                  National Institute of Technology Raipur
                 </div>
               </div>
             </Link>
 
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-sm">
-              The centralized campus merchandise storefront spearheaded by <strong>NITRRFIE</strong> (NIT Raipur Foundation for Innovation and Entrepreneurship), National Institute of Technology Raipur. Built to unite student bodies, committees, and alumni with authentic collegiate apparel.
+              The official campus merchandise store of <strong>National Institute of Technology Raipur</strong>. Bringing students, faculty, and alumni authentic varsity apparel, hoodies, t-shirts, and campus accessories.
             </p>
 
             <div className="pt-2 flex items-center gap-2 text-xs text-slate-400">
@@ -150,7 +156,7 @@ export default function Footer() {
       <div className="border-t border-slate-900 bg-black/60 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
-            © 2026 NITRRFIE Store (NIT Raipur Foundation for Innovation and Entrepreneurship) • NIT Raipur. All rights reserved.
+            © 2026 NIT Raipur Store • National Institute of Technology Raipur. All rights reserved.
           </div>
           <div className="flex items-center gap-2">
             <span>Crafted with</span>

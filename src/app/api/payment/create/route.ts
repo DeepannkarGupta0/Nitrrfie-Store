@@ -14,7 +14,7 @@ interface CreatePaymentBody {
 function generateOrderNumber(): string {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).substring(2, 5).toUpperCase();
-  return `UNW-${ts}-${rand}`.substring(0, 18);
+  return `NITRR-${ts}-${rand}`.substring(0, 18);
 }
 
 export async function POST(request: NextRequest) {

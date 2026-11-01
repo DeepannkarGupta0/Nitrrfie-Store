@@ -25,10 +25,10 @@ export default function NetrifyHero({ onQuickView }: NetrifyHeroProps) {
           <div className="lg:col-span-7 space-y-6">
             {/* Campus Tag */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-100/80 border border-[#ff782e]/20 text-[#ff782e] text-xs font-semibold tracking-wide">
-              <span className="w-2 h-2 rounded-full bg-[#ff782e] animate-pulse" />
-              <span>NITRRFIE • NIT RAIPUR</span>
+              <span className="w-2 h-2 rounded-full bg-[#ff782e]" />
+              <span>NIT RAIPUR STORE</span>
               <span className="text-[#ff782e]/40">•</span>
-              <span className="text-slate-700 font-bold">WINTER 2026 EDITION</span>
+              <span className="text-slate-700 font-bold">OFFICIAL CAMPUS MERCHANDISE</span>
             </div>
 
             {/* Main Headline */}
@@ -39,7 +39,7 @@ export default function NetrifyHero({ onQuickView }: NetrifyHeroProps) {
 
             {/* Sub-headline */}
             <p className="text-base sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
-              The centralized merchandise storefront by <strong>NITRRFIE</strong> (NIT Raipur Foundation for Innovation and Entrepreneurship). Official committee drops, varsity outerwear, and commemorative apparel crafted for students, clubs, technical societies, and proud alumni.
+              Official campus merchandise store of <strong>National Institute of Technology Raipur</strong>. Discover varsity hoodies, collegiate t-shirts, jackets, and accessories designed for students, clubs, and alumni.
             </p>
 
             {/* CTA Group */}
@@ -48,7 +48,7 @@ export default function NetrifyHero({ onQuickView }: NetrifyHeroProps) {
                 href="#all-drops"
                 className="px-6 py-3.5 rounded-2xl bg-[#ff782e] hover:bg-[#e05b12] text-white font-sans font-bold text-sm flex items-center gap-2 shadow-lg shadow-[#ff782e]/25 hover:shadow-xl hover:shadow-[#ff782e]/30 transition-all hover:-translate-y-0.5 cursor-pointer"
               >
-                <span>Explore Official Drops</span>
+                <span>Explore Official Merchandise</span>
                 <ArrowRight className="w-4 h-4" />
               </a>
 
@@ -56,7 +56,7 @@ export default function NetrifyHero({ onQuickView }: NetrifyHeroProps) {
                 href="#collections"
                 className="px-5 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-sans font-bold text-sm flex items-center gap-2 transition-all shadow-sm hover:border-slate-300 cursor-pointer"
               >
-                <span>Discover Campus Collections</span>
+                <span>Browse Categories</span>
               </a>
 
               <button
@@ -69,15 +69,15 @@ export default function NetrifyHero({ onQuickView }: NetrifyHeroProps) {
               </button>
             </div>
 
-            {/* Institutional Trust Elements */}
+            {/* Campus Store Features */}
             <div className="pt-6 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#ff782e] shrink-0" />
-                <span className="text-xs font-medium text-slate-700">Official Committee Licensing</span>
+                <span className="text-xs font-medium text-slate-700">Official NITRR Apparel</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#ff782e] shrink-0" />
-                <span className="text-xs font-medium text-slate-700">Premium 240-380 GSM</span>
+                <span className="text-xs font-medium text-slate-700">Heavyweight 240–380 GSM</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#ff782e] shrink-0" />
@@ -181,10 +181,10 @@ export default function NetrifyHero({ onQuickView }: NetrifyHeroProps) {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-slate-900 font-sans">
-                    100% Verified By NITRR
+                    NIT Raipur Official Store
                   </div>
                   <div className="text-[10px] text-slate-500">
-                    Hand-delivered across Hostels & Campus
+                    Direct Handover across Campus & Hostels
                   </div>
                 </div>
               </div>
