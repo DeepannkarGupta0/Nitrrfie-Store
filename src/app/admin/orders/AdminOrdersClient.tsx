@@ -115,6 +115,28 @@ function OrderDetailModal({ order, onClose, onRetry }: OrderDetailModalProps) {
               <span className="font-mono text-sm font-bold text-slate-900 bg-yellow-100 px-2 py-0.5 inline-block">
                 {(order.shipping_address as any)?.upi_utr || order.payments?.gateway_payment_id || "—"}
               </span>
+              {(order.shipping_address as any)?.payment_screenshot_url && (
+                <>
+                  <span className="text-brutal-black/60">Payment Screenshot</span>
+                  <div>
+                    <a
+                      href={(order.shipping_address as any)?.payment_screenshot_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block group"
+                    >
+                      <img
+                        src={(order.shipping_address as any)?.payment_screenshot_url}
+                        alt="Payment Proof"
+                        className="w-32 h-32 object-cover border-2 border-brutal-black rounded shadow-sm group-hover:opacity-90"
+                      />
+                      <span className="font-mono text-[10px] text-blue-700 underline mt-1 block">
+                        Open Full Screenshot ↗
+                      </span>
+                    </a>
+                  </div>
+                </>
+              )}
             </div>
           </section>
 
@@ -138,7 +160,19 @@ function OrderDetailModal({ order, onClose, onRetry }: OrderDetailModalProps) {
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-wrap gap-3 pt-2">
+            {order.customer_phone && (
+              <a
+                href={`https://wa.me/91${order.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                  `Hello ${order.customer_name}, this is NIT Raipur Store regarding your order #${order.order_number}.`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-xs uppercase px-4 py-2.5 bg-emerald-600 text-white font-bold flex items-center gap-1.5 border-brutal border-2 border-brutal-black hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                <span>WhatsApp Customer</span>
+              </a>
+            )}
             {order.status === "failed" && (
               <BrutalButton variant="accent" onClick={handleRetry} disabled={retrying}>
                 {retrying ? "Retrying..." : "Retry Qikink"}

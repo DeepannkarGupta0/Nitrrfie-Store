@@ -109,6 +109,9 @@ export interface ShippingAddress {
   formatted_address?: string;
   payment_method?: string;
   upi_utr?: string;
+  payment_screenshot_url?: string;
+  whatsapp_message?: string;
+  whatsapp_url?: string;
   store_upi_id?: string;
   store_phone?: string;
 }

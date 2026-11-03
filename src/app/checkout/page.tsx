@@ -21,6 +21,9 @@ import {
   Truck,
   PhoneCall,
   Info,
+  MessageCircle,
+  UploadCloud,
+  Trash2,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@clerk/nextjs";
@@ -38,6 +41,10 @@ interface OrderConfirmationData {
   delivery_location: string;
   payment_method: string;
   upi_utr: string;
+  payment_screenshot_url?: string;
+  whatsapp_message?: string;
+  whatsapp_url?: string;
+  store_whatsapp?: string;
   shipping_address?: Record<string, any>;
   items: Array<{
     name: string;
@@ -129,10 +136,15 @@ export default function CheckoutPage() {
   const [upiUtr, setUpiUtr] = useState("");
   const [copiedUpi, setCopiedUpi] = useState(false);
 
+  // Payment Screenshot State
+  const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+
   // Submission State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<OrderConfirmationData | null>(null);
+  const [copiedWaMessage, setCopiedWaMessage] = useState(false);
 
   const storeUpiId = process.env.NEXT_PUBLIC_STORE_UPI_ID || "7974766166@axl";
   const storePhone = process.env.NEXT_PUBLIC_STORE_PHONE || "7974766166";
@@ -152,6 +164,66 @@ export default function CheckoutPage() {
     navigator.clipboard.writeText(storeUpiId);
     setCopiedUpi(true);
     setTimeout(() => setCopiedUpi(false), 2000);
+  };
+
+  const handleCopyWhatsAppMessage = () => {
+    if (!confirmation?.whatsapp_message) return;
+    navigator.clipboard.writeText(confirmation.whatsapp_message);
+    setCopiedWaMessage(true);
+    setTimeout(() => setCopiedWaMessage(false), 2500);
+  };
+
+  // Client-side screenshot image handler with canvas compression
+  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file (PNG, JPG, or JPEG).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.78);
+          setScreenshotBase64(compressed);
+          setScreenshotPreview(compressed);
+        } else {
+          setScreenshotBase64(dataUrl);
+          setScreenshotPreview(dataUrl);
+        }
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveScreenshot = () => {
+    setScreenshotBase64(null);
+    setScreenshotPreview(null);
   };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -258,6 +330,7 @@ export default function CheckoutPage() {
           totalAmount: totalPrice,
           paymentMethod: "upi_qr",
           upiUtr: cleanUtr,
+          paymentScreenshot: screenshotBase64 || undefined,
         }),
       });
 
@@ -302,6 +375,12 @@ export default function CheckoutPage() {
 
   // ── Order Confirmed State ──
   if (confirmation) {
+    const waUrl =
+      confirmation.whatsapp_url ||
+      `https://wa.me/91${storePhone}?text=${encodeURIComponent(
+        `Hi, I have placed order ${confirmation.order_number} for ₹${confirmation.total_amount}. My UPI UTR is ${confirmation.upi_utr}. Please verify.`
+      )}`;
+
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 sm:py-16">
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
@@ -320,6 +399,95 @@ export default function CheckoutPage() {
 
           {/* Details Body */}
           <div className="p-6 sm:p-8 space-y-6">
+            {/* 1-Click WhatsApp Verification Card (Primary Call To Action) */}
+            <div className="rounded-3xl border-2 border-emerald-500 bg-emerald-50/70 p-6 sm:p-7 space-y-4 shadow-lg shadow-emerald-500/10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30">
+                    <MessageCircle className="w-6 h-6 fill-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-full">
+                        Instant Verification
+                      </span>
+                      <span className="text-[11px] text-emerald-700 font-bold">1-Click WhatsApp</span>
+                    </div>
+                    <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mt-0.5 font-sans">
+                      Verify Directly on WhatsApp (+91 {storePhone})
+                    </h2>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                Click below to send your <strong>Order ID ({confirmation.order_number})</strong>, <strong>12-digit UTR ({confirmation.upi_utr})</strong>, and delivery address directly to our WhatsApp verification desk for immediate approval and faster dispatch.
+              </p>
+
+              {/* Uploaded Screenshot Preview (if any) */}
+              {confirmation.payment_screenshot_url && (
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-emerald-200 text-xs">
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-100">
+                    <Image
+                      src={confirmation.payment_screenshot_url}
+                      alt="Payment screenshot"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-bold text-slate-900 block truncate">
+                      Payment Screenshot Attached
+                    </span>
+                    <span className="text-[11px] text-emerald-700 block mt-0.5">
+                      ✓ Uploaded to secure verification storage
+                    </span>
+                    <a
+                      href={confirmation.payment_screenshot_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 mt-1 font-semibold"
+                    >
+                      <span>View uploaded screenshot</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* 1-Click WhatsApp Button and Copy Option */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-600/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer text-center"
+                >
+                  <MessageCircle className="w-5 h-5 fill-white" />
+                  <span>Send Info to WhatsApp (1-Click)</span>
+                  <ExternalLink className="w-4 h-4 opacity-80" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleCopyWhatsAppMessage}
+                  className="py-4 px-5 rounded-2xl bg-white border border-emerald-300 hover:bg-emerald-100/50 text-emerald-900 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  {copiedWaMessage ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Copied Details!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-emerald-700" />
+                      <span>Copy Message</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
             {/* Order Reference Box */}
             <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-1">
@@ -824,7 +992,7 @@ export default function CheckoutPage() {
                         Scan & Pay Exactly ₹{totalPrice}
                       </span>
                       <p className="text-slate-600 mt-0.5 leading-relaxed">
-                        Open Google Pay, PhonePe, Paytm, or BHIM and scan this QR code. The exact payable amount of ₹{totalPrice} is pre-filled.
+                        Open Google Pay, PhonePe, Paytm, or BHIM and scan this QR code. The payable amount of ₹{totalPrice} is pre-filled.
                       </p>
                     </div>
 
@@ -852,7 +1020,7 @@ export default function CheckoutPage() {
                     <div className="flex items-center gap-2 text-slate-600 text-[11px]">
                       <PhoneCall className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>
-                        Payment / Order Support: <strong className="text-slate-900 font-mono">+91 {storePhone}</strong>
+                        Store & WhatsApp Desk: <strong className="text-slate-900 font-mono">+91 {storePhone}</strong>
                       </span>
                     </div>
 
@@ -886,6 +1054,59 @@ export default function CheckoutPage() {
                   <p className="text-[11px] text-slate-500 mt-1">
                     Found on your Google Pay / PhonePe / Paytm receipt under &quot;UPI Ref No.&quot; or &quot;UTR&quot;.
                   </p>
+                </div>
+
+                {/* Payment Screenshot Upload */}
+                <div className="pt-3 border-t border-orange-200/60">
+                  <label className="block text-xs font-bold text-slate-900 mb-1">
+                    Upload Payment Screenshot <span className="text-slate-400 font-normal">(Optional for Instant 1-Click Verification)</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 mb-2">
+                    Attach your UPI success screenshot. It will be sent with your order details to WhatsApp (+91 {storePhone}) for immediate clearance.
+                  </p>
+
+                  {!screenshotPreview ? (
+                    <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-300 hover:border-[#ff782e] rounded-2xl bg-white hover:bg-orange-50/30 transition-all cursor-pointer">
+                      <UploadCloud className="w-7 h-7 text-slate-400 mb-1" />
+                      <span className="text-xs font-bold text-slate-700">
+                        Click to select payment screenshot
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">
+                        PNG, JPG, or JPEG (Auto-compressed)
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleScreenshotChange}
+                      />
+                    </label>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+                          <Image
+                            src={screenshotPreview}
+                            alt="Screenshot preview"
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 block">Screenshot Attached</span>
+                          <span className="text-[11px] text-emerald-600 font-medium">✓ Ready to send to WhatsApp</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveScreenshot}
+                        className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                        title="Remove screenshot"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

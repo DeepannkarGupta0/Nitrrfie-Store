@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, MapPin, ShieldCheck, Heart } from "lucide-react";
+import { Mail, MapPin, ShieldCheck, Heart, MessageCircle } from "lucide-react";
 
 export default function NetrifyFooter() {
   return (
@@ -132,6 +132,18 @@ export default function NetrifyFooter() {
                 </Link>
               </li>
               <li className="pt-2">
+                <span className="text-[11px] text-slate-500 block">WhatsApp Support & Verification:</span>
+                <a
+                  href="https://wa.me/917974766166?text=Hi%2C%20I%20have%20a%20query%20about%20my%20order%20or%20payment%20verification."
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-white hover:text-emerald-400 transition-colors font-medium flex items-center gap-1.5 mt-0.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-500 fill-emerald-500/20" />
+                  +91 7974766166
+                </a>
+              </li>
+              <li className="pt-1">
                 <span className="text-[11px] text-slate-500 block">Queries & Feedback:</span>
                 <a
                   href="mailto:contact@nitrrfie.in"

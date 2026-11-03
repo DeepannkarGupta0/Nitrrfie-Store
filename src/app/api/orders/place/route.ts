@@ -32,7 +32,12 @@ interface PlaceOrderBody {
   totalAmount: number; // in INR
   paymentMethod: "upi_qr";
   upiUtr?: string;
+  paymentScreenshot?: string; // base64 data URL if uploaded
 }
+
+const STORE_WHATSAPP = "7974766166";
+const STORE_UPI_ID = "7974766166@axl";
+const STORE_PHONE = "7974766166";
 
 function generateOrderNumber(): string {
   const ts = Date.now().toString(36).toUpperCase();
@@ -40,10 +45,88 @@ function generateOrderNumber(): string {
   return `NITRR-${ts}-${rand}`;
 }
 
+function buildWhatsAppMessage({
+  orderNumber,
+  customerName,
+  customerPhone,
+  customerEmail,
+  rollNumber,
+  deliveryType,
+  deliveryLocation,
+  items,
+  totalAmount,
+  upiUtr,
+  screenshotUrl,
+}: {
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  rollNumber?: string;
+  deliveryType: string;
+  deliveryLocation: string;
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+    selectedSize?: string;
+    selectedColorId?: string;
+  }>;
+  totalAmount: number;
+  upiUtr: string;
+  screenshotUrl?: string;
+}): string {
+  const itemsText = items
+    .map(
+      (it, idx) =>
+        `${idx + 1}. *${it.name}*\n   • Size: ${it.selectedSize || "Standard"}${
+          it.selectedColorId ? ` | Shade: ${it.selectedColorId}` : ""
+        } | Qty: ${it.quantity} (₹${it.price * it.quantity})`
+    )
+    .join("\n");
+
+  const modeText =
+    deliveryType === "pan_india"
+      ? "PAN India Doorstep Delivery"
+      : deliveryType === "hostel_delivery"
+      ? "NIT Raipur Hostel Handover"
+      : "Campus Portico Desk Pickup";
+
+  const lines = [
+    `🛍️ *NIT RAIPUR STORE - ORDER & PAYMENT VERIFICATION*`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `📦 *Order ID:* ${orderNumber}`,
+    `💰 *Total Paid:* ₹${totalAmount.toLocaleString("en-IN")}`,
+    `🏦 *UPI UTR / Ref ID:* ${upiUtr}`,
+    `💳 *Paid To:* ${STORE_UPI_ID}`,
+    ``,
+    `👤 *Customer Information:*`,
+    `• Name: ${customerName}`,
+    `• Mobile: ${customerPhone}`,
+    `• Email: ${customerEmail}`,
+    rollNumber ? `• Roll No / ID: ${rollNumber}` : null,
+    ``,
+    `📍 *Delivery Destination:*`,
+    `• Mode: ${modeText}`,
+    `• Address: ${deliveryLocation}`,
+    ``,
+    `👕 *Items Ordered:*`,
+    itemsText,
+    ``,
+    screenshotUrl
+      ? `📸 *Payment Proof Link:* ${screenshotUrl}`
+      : `📸 *Payment Proof:* (Attached with this message)`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `_Please verify my UPI payment and confirm my order dispatch._`,
+  ];
+
+  return lines.filter((l) => l !== null).join("\n");
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: PlaceOrderBody = await request.json();
-    const { customer, items, totalAmount, paymentMethod, upiUtr } = body;
+    const { customer, items, totalAmount, paymentMethod, upiUtr, paymentScreenshot } = body;
 
     // ── 1. Validate Customer & Cart ─────────────────────────────────────────
     if (!customer?.name?.trim()) {
@@ -54,7 +137,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Please provide a valid 10-digit mobile number." }, { status: 400 });
     }
     if (!customer?.email?.trim() || !customer.email.includes("@")) {
-      return NextResponse.json({ error: "Please provide a valid email address for your order confirmation." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Please provide a valid email address for your order confirmation." },
+        { status: 400 }
+      );
     }
     if (!items || items.length === 0) {
       return NextResponse.json({ error: "Your bag is empty." }, { status: 400 });
@@ -120,7 +206,39 @@ export async function POST(request: NextRequest) {
     const orderNumber = generateOrderNumber();
     const totalInPaise = Math.round(totalAmount * 100);
 
-    // ── 4. Record Payment in Supabase ───────────────────────────────────────
+    // ── 4. Upload Payment Screenshot to Supabase Storage if Provided ────────
+    let paymentScreenshotUrl: string | undefined = undefined;
+    if (paymentScreenshot && paymentScreenshot.startsWith("data:image/")) {
+      try {
+        const matches = paymentScreenshot.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const contentType = matches[1];
+          const buffer = Buffer.from(matches[2], "base64");
+          const extension = contentType.includes("png") ? "png" : "jpg";
+          const filePath = `payment-proofs/${orderNumber}-${Date.now()}.${extension}`;
+
+          const { error: uploadError } = await supabaseAdmin.storage
+            .from("designs")
+            .upload(filePath, buffer, {
+              contentType,
+              upsert: true,
+            });
+
+          if (!uploadError) {
+            const { data: publicUrlData } = supabaseAdmin.storage
+              .from("designs")
+              .getPublicUrl(filePath);
+            paymentScreenshotUrl = publicUrlData.publicUrl;
+          } else {
+            console.warn("Payment screenshot upload warning:", uploadError.message);
+          }
+        }
+      } catch (uploadEx) {
+        console.warn("Failed to process payment screenshot upload:", uploadEx);
+      }
+    }
+
+    // ── 5. Record Payment in Supabase ───────────────────────────────────────
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from("payments")
       .insert({
@@ -143,7 +261,7 @@ export async function POST(request: NextRequest) {
       throw new Error(`Failed to initialize payment record: ${paymentError.message}`);
     }
 
-    // ── 5. Structure Shipping Address Exactly As Entered ───────────────────
+    // ── 6. Structure Shipping Address Exactly As Entered ───────────────────
     let shippingDetails: Record<string, any>;
 
     if (deliveryType === "pan_india") {
@@ -170,8 +288,9 @@ export async function POST(request: NextRequest) {
         formatted_address: fullAddr,
         payment_method: "upi_qr",
         upi_utr: cleanUtr,
-        store_upi_id: "7974766166@axl",
-        store_phone: "7974766166",
+        payment_screenshot_url: paymentScreenshotUrl || null,
+        store_upi_id: STORE_UPI_ID,
+        store_phone: STORE_PHONE,
       };
     } else if (deliveryType === "hostel_delivery") {
       const fullAddr = `${customer.hostelName}, Room ${customer.roomNumber?.trim()}, NIT Raipur Campus, Raipur, Chhattisgarh - 492010`;
@@ -190,8 +309,9 @@ export async function POST(request: NextRequest) {
         formatted_address: fullAddr,
         payment_method: "upi_qr",
         upi_utr: cleanUtr,
-        store_upi_id: "7974766166@axl",
-        store_phone: "7974766166",
+        payment_screenshot_url: paymentScreenshotUrl || null,
+        store_upi_id: STORE_UPI_ID,
+        store_phone: STORE_PHONE,
       };
     } else {
       // campus_desk
@@ -209,12 +329,35 @@ export async function POST(request: NextRequest) {
         formatted_address: fullAddr,
         payment_method: "upi_qr",
         upi_utr: cleanUtr,
-        store_upi_id: "7974766166@axl",
-        store_phone: "7974766166",
+        payment_screenshot_url: paymentScreenshotUrl || null,
+        store_upi_id: STORE_UPI_ID,
+        store_phone: STORE_PHONE,
       };
     }
 
-    // ── 6. Record Order in Supabase ─────────────────────────────────────────
+    // ── 7. Generate WhatsApp Verification Content & Link ───────────────────
+    const formattedWhatsAppMessage = buildWhatsAppMessage({
+      orderNumber,
+      customerName: customer.name.trim(),
+      customerPhone: customer.phone.trim(),
+      customerEmail: customer.email.trim(),
+      rollNumber: customer.rollNumber?.trim().toUpperCase(),
+      deliveryType,
+      deliveryLocation: shippingDetails.formatted_address,
+      items,
+      totalAmount,
+      upiUtr: cleanUtr,
+      screenshotUrl: paymentScreenshotUrl,
+    });
+
+    const whatsappUrl = `https://wa.me/91${STORE_WHATSAPP}?text=${encodeURIComponent(
+      formattedWhatsAppMessage
+    )}`;
+
+    shippingDetails.whatsapp_message = formattedWhatsAppMessage;
+    shippingDetails.whatsapp_url = whatsappUrl;
+
+    // ── 8. Record Order in Supabase ─────────────────────────────────────────
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .insert({
@@ -254,6 +397,10 @@ export async function POST(request: NextRequest) {
       shipping_address: shippingDetails,
       payment_method: "upi_qr",
       upi_utr: cleanUtr,
+      payment_screenshot_url: paymentScreenshotUrl || null,
+      whatsapp_message: formattedWhatsAppMessage,
+      whatsapp_url: whatsappUrl,
+      store_whatsapp: STORE_WHATSAPP,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Internal order processing error";
