@@ -49,30 +49,34 @@ function OrderDetailModal({ order, onClose, onRetry }: OrderDetailModalProps) {
         <div className="p-6 space-y-6">
           {/* Customer Info */}
           <section>
-            <h3 className="font-mono text-sm uppercase font-bold mb-3 border-b border-brutal-black/20 pb-2">Customer</h3>
+            <h3 className="font-mono text-sm uppercase font-bold mb-3 border-b border-brutal-black/20 pb-2">Student & Handover Details</h3>
             <div className="grid grid-cols-2 gap-2 font-sans text-sm">
               <span className="text-brutal-black/60">Name</span><span className="font-bold">{order.customer_name}</span>
+              <span className="text-brutal-black/60">Roll Number / ID</span><span className="font-mono font-bold text-accent">{(order.shipping_address as any)?.roll_number || order.user_id}</span>
+              <span className="text-brutal-black/60">WhatsApp / Phone</span><span>{order.customer_phone || "—"}</span>
               <span className="text-brutal-black/60">Email</span><span>{order.customer_email}</span>
-              <span className="text-brutal-black/60">Phone</span><span>{order.customer_phone || "—"}</span>
-              <span className="text-brutal-black/60">Address</span>
-              <span>{order.shipping_address?.address}, {order.shipping_address?.city}, {order.shipping_address?.state} — {order.shipping_address?.pincode}</span>
+              <span className="text-brutal-black/60">Delivery Point</span>
+              <span className="font-bold">
+                {(order.shipping_address as any)?.delivery_type === "hostel_delivery"
+                  ? `${(order.shipping_address as any)?.hostel_name}, Room ${(order.shipping_address as any)?.room_number}`
+                  : "Main Building Portico Handover Desk"}
+              </span>
             </div>
           </section>
 
           {/* Items */}
           <section>
-            <h3 className="font-mono text-sm uppercase font-bold mb-3 border-b border-brutal-black/20 pb-2">Items</h3>
+            <h3 className="font-mono text-sm uppercase font-bold mb-3 border-b border-brutal-black/20 pb-2">Items Ordered</h3>
             <div className="space-y-3">
               {order.items?.map((item, i) => (
                 <div key={i} className="flex items-center gap-4 p-3 border-brutal border-2 border-brutal-black/30">
-                  {item.designImageUrl && (
-                    <img src={item.designImageUrl} alt={`${item.name} design`} className="w-14 h-14 object-cover border border-brutal-black/30" />
+                  {item.image && (
+                    <img src={item.image} alt={item.name} className="w-14 h-14 object-cover border border-brutal-black/30" />
                   )}
                   <div className="flex-1">
                     <p className="font-mono text-sm font-bold">{item.name}</p>
                     <p className="font-sans text-xs text-brutal-black/60">
-                      Size: {item.selectedSize} · Qty: {item.quantity}
-                      {item.designId && <span className="ml-2 text-accent">✦ Custom Design</span>}
+                      Size: {item.selectedSize || "Standard"} · Qty: {item.quantity} {item.selectedColorId ? `· ${item.selectedColorId}` : ""}
                     </p>
                   </div>
                   <p className="font-mono font-bold">{formatPrice(item.price * item.quantity)}</p>
@@ -80,27 +84,31 @@ function OrderDetailModal({ order, onClose, onRetry }: OrderDetailModalProps) {
               ))}
             </div>
             <div className="flex justify-between font-mono font-bold text-lg mt-3 pt-3 border-t-3 border-brutal-black">
-              <span>Total</span>
+              <span>Total Amount</span>
               <span className="text-accent">{formatPrice(order.total_amount / 100)}</span>
             </div>
           </section>
 
           {/* Payment */}
-          {order.payments && (
-            <section>
-              <h3 className="font-mono text-sm uppercase font-bold mb-3 border-b border-brutal-black/20 pb-2">Payment</h3>
-              <div className="grid grid-cols-2 gap-2 font-sans text-sm">
-                <span className="text-brutal-black/60">Status</span>
-                <span className={`font-bold ${order.payments.status === "captured" ? "text-green-700" : "text-accent"}`}>
-                  {order.payments.status.toUpperCase()}
-                </span>
-                <span className="text-brutal-black/60">Gateway ID</span>
-                <span className="font-mono text-xs break-all">{order.payments.gateway_payment_id || "—"}</span>
-                <span className="text-brutal-black/60">Verified</span>
-                <span>{order.payments.verified ? "✓ Yes" : "✗ No"}</span>
-              </div>
-            </section>
-          )}
+          <section>
+            <h3 className="font-mono text-sm uppercase font-bold mb-3 border-b border-brutal-black/20 pb-2">Payment Verification</h3>
+            <div className="grid grid-cols-2 gap-2 font-sans text-sm">
+              <span className="text-brutal-black/60">Payment Mode</span>
+              <span className="font-bold">
+                {(order.shipping_address as any)?.payment_method === "upi_qr"
+                  ? "UPI QR Code Transfer"
+                  : "Pay at Campus Handover"}
+              </span>
+              <span className="text-brutal-black/60">Status</span>
+              <span className={`font-bold ${order.status === "paid" ? "text-green-700" : "text-accent"}`}>
+                {order.status.toUpperCase()}
+              </span>
+              <span className="text-brutal-black/60">12-Digit UTR Number</span>
+              <span className="font-mono text-sm font-bold text-slate-900 bg-yellow-100 px-2 py-0.5 inline-block">
+                {(order.shipping_address as any)?.upi_utr || order.payments?.gateway_payment_id || "—"}
+              </span>
+            </div>
+          </section>
 
           {/* Qikink */}
           {order.qikink_order_id && (

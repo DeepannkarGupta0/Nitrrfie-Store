@@ -88,6 +88,7 @@ export interface OrderItem {
   selectedColorId: string;
   designId?: string;
   designImageUrl?: string;
+  image?: string;
 }
 
 export interface ShippingAddress {
