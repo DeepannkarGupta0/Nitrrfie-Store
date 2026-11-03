@@ -19,22 +19,31 @@ import {
   AlertCircle,
   Clock,
   Printer,
+  CreditCard,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@clerk/nextjs";
 
 type DeliveryType = "campus_desk" | "hostel_delivery" | "home_delivery";
-type PaymentMethod = "upi_qr" | "cash_on_handover";
 
 interface OrderConfirmationData {
   order_number: string;
   order_id: string;
   total_amount: number;
   customer_name: string;
+  roll_number: string;
   delivery_type: DeliveryType;
   delivery_location: string;
-  payment_method: PaymentMethod;
-  upi_utr?: string | null;
+  payment_method: string;
+  upi_utr: string;
+  items: Array<{
+    name: string;
+    selectedSize?: string;
+    selectedColorId?: string;
+    quantity: number;
+    price: number;
+    image?: string;
+  }>;
 }
 
 const NIT_HOSTELS = [
@@ -54,14 +63,12 @@ export default function CheckoutPage() {
   const { user } = useUser();
 
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("campus_desk");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi_qr");
 
   // Form Fields
   const [name, setName] = useState(user?.fullName || "");
   const [rollNumber, setRollNumber] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState(user?.primaryEmailAddress?.emailAddress || "");
-  const [branch, setBranch] = useState("Computer Science & Engineering");
   const [hostelName, setHostelName] = useState(NIT_HOSTELS[0]);
   const [roomNumber, setRoomNumber] = useState("");
   const [outsideAddress, setOutsideAddress] = useState("");
@@ -120,46 +127,46 @@ export default function CheckoutPage() {
       setLoading(false);
       return;
     }
-    if (paymentMethod === "upi_qr") {
-      const cleanUtr = upiUtr.trim().replace(/\s+/g, "");
-      if (!cleanUtr || cleanUtr.length < 8) {
-        setError(
-          "Please enter the 12-digit UPI Reference Number (UTR / Bank Ref) shown in your payment app after completing the transfer."
-        );
-        setLoading(false);
-        return;
-      }
+
+    const cleanUtr = upiUtr.trim().replace(/\s+/g, "");
+    if (!cleanUtr || cleanUtr.length < 8) {
+      setError(
+        "Please enter the 12-digit UPI Transaction ID (UTR / Bank Ref Number) after completing the UPI payment."
+      );
+      setLoading(false);
+      return;
     }
 
     try {
+      const orderPayloadItems = items.map((item) => ({
+        id: item.id,
+        slug: item.slug,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        selectedSize: item.selectedSize || "Standard",
+        selectedColorId: item.selectedColorId || "Standard",
+        image: item.image,
+      }));
+
       const response = await fetch("/api/orders/place", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customer: {
             name: name.trim(),
-            rollNumber: rollNumber.trim(),
+            rollNumber: rollNumber.trim().toUpperCase(),
             email: email.trim(),
             phone: phone.trim(),
-            branch,
             deliveryType,
             hostelName: deliveryType === "hostel_delivery" ? hostelName : undefined,
             roomNumber: deliveryType === "hostel_delivery" ? roomNumber.trim() : undefined,
             address: deliveryType === "home_delivery" ? outsideAddress.trim() : undefined,
           },
-          items: items.map((item) => ({
-            id: item.id,
-            slug: item.slug,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            selectedSize: item.selectedSize,
-            selectedColorId: item.selectedColorId,
-            image: item.image,
-          })),
+          items: orderPayloadItems,
           totalAmount: totalPrice,
-          paymentMethod,
-          upiUtr: paymentMethod === "upi_qr" ? upiUtr.trim() : undefined,
+          paymentMethod: "upi_qr",
+          upiUtr: cleanUtr,
         }),
       });
 
@@ -168,7 +175,11 @@ export default function CheckoutPage() {
         throw new Error(data.error || "Failed to place order.");
       }
 
-      setConfirmation(data);
+      setConfirmation({
+        ...data,
+        roll_number: rollNumber.trim().toUpperCase(),
+        items: orderPayloadItems,
+      });
       clearCart();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error placing order. Please try again.");
@@ -210,24 +221,34 @@ export default function CheckoutPage() {
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-black font-sans tracking-tight">
-              Order Confirmed!
+              Order Confirmed & Payment Recorded!
             </h1>
             <p className="text-emerald-100 text-xs sm:text-sm max-w-md mx-auto">
-              Your official NIT Raipur merchandise order has been recorded in the campus store inventory.
+              Your official NIT Raipur merchandise order has been recorded with your unique order ID.
             </p>
           </div>
 
           {/* Details Body */}
           <div className="p-6 sm:p-8 space-y-6">
             {/* Order Reference Box */}
-            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-3">
+            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-1">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Official Order Number
-                </span>
-                <span className="text-lg font-mono font-black text-[#ff782e]">
-                  {confirmation.order_number}
-                </span>
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                    Unique Order ID
+                  </span>
+                  <span className="text-xl font-mono font-black text-[#ff782e]">
+                    {confirmation.order_number}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                    Total Paid
+                  </span>
+                  <span className="text-xl font-sans font-black text-slate-900">
+                    ₹{confirmation.total_amount.toLocaleString("en-IN")}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700">
@@ -236,30 +257,63 @@ export default function CheckoutPage() {
                   <strong className="text-slate-900">{confirmation.customer_name}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Total Payable:</span>
-                  <strong className="text-slate-900 font-sans text-sm">
-                    ₹{confirmation.total_amount.toLocaleString("en-IN")}
-                  </strong>
+                  <span className="text-slate-400 block">Roll Number / ID:</span>
+                  <strong className="text-slate-900 font-mono">{confirmation.roll_number}</strong>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Payment Mode:</span>
                   <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    {confirmation.payment_method === "upi_qr"
-                      ? "UPI QR Payment (Verified)"
-                      : "Pay at Campus Handover"}
+                    Prepaid UPI (Recorded)
                   </span>
                 </div>
-                {confirmation.upi_utr && (
-                  <div>
-                    <span className="text-slate-400 block">Bank Reference (UTR):</span>
-                    <span className="font-mono font-bold text-slate-900">{confirmation.upi_utr}</span>
-                  </div>
-                )}
+                <div>
+                  <span className="text-slate-400 block">UPI Transaction UTR:</span>
+                  <span className="font-mono font-bold text-slate-900 bg-yellow-100 px-2 py-0.5 rounded">
+                    {confirmation.upi_utr}
+                  </span>
+                </div>
               </div>
 
               <div className="pt-2 border-t border-slate-200 text-xs">
                 <span className="text-slate-400 block">Delivery / Handover Destination:</span>
                 <strong className="text-slate-800">{confirmation.delivery_location}</strong>
+              </div>
+            </div>
+
+            {/* Exactly What Was Ordered (Item Breakdown with Size & Color) */}
+            <div className="rounded-2xl border border-slate-200 p-5 space-y-3">
+              <h3 className="font-sans font-extrabold text-sm text-slate-900 uppercase tracking-wide">
+                Items In This Order
+              </h3>
+              <div className="divide-y divide-slate-100">
+                {confirmation.items.map((item, idx) => (
+                  <div key={idx} className="py-2.5 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-3">
+                      {item.image && (
+                        <div className="relative w-12 h-12 rounded-lg bg-slate-900 overflow-hidden shrink-0 border border-slate-200">
+                          <Image src={item.image} alt={item.name} fill className="object-cover" sizes="48px" />
+                        </div>
+                      )}
+                      <div>
+                        <strong className="block text-slate-900">{item.name}</strong>
+                        <div className="flex items-center gap-2 mt-0.5 text-slate-500 font-sans">
+                          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold text-[10px]">
+                            Size: {item.selectedSize || "Standard"}
+                          </span>
+                          {item.selectedColorId && item.selectedColorId !== "Standard" && (
+                            <span className="bg-orange-50 text-[#ff782e] px-1.5 py-0.5 rounded font-bold text-[10px]">
+                              Shade: {item.selectedColorId}
+                            </span>
+                          )}
+                          <span>• Qty: {item.quantity}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="font-bold text-slate-900 font-sans text-sm">
+                      ₹{item.price * item.quantity}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -270,10 +324,7 @@ export default function CheckoutPage() {
                 <span>Collection & Handover Timings</span>
               </div>
               <p className="leading-relaxed">
-                Please present this <strong>Order Number ({confirmation.order_number})</strong> and your <strong>Student ID</strong> at the <strong>Campus Handover Desk (NIT Raipur Main Building Portico)</strong> between <strong>5:00 PM – 7:30 PM</strong> to collect your merchandise.
-              </p>
-              <p className="text-[11px] text-slate-500">
-                For hostel delivery, coordinators will arrive at your hostel gate during the evening slot.
+                Please present this <strong>Order ID ({confirmation.order_number})</strong> and your <strong>Student ID</strong> at the <strong>Campus Handover Desk (NIT Raipur Main Building Portico)</strong> between <strong>5:00 PM – 7:30 PM</strong> to collect your merchandise.
               </p>
             </div>
 
@@ -318,7 +369,7 @@ export default function CheckoutPage() {
           NIT Raipur Store Checkout
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Fast campus checkout • No passwords required • Official NIT Raipur inventory
+          Direct campus checkout • Official NIT Raipur inventory • 100% Prepaid UPI
         </p>
       </div>
 
@@ -357,7 +408,7 @@ export default function CheckoutPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Rahul Verma"
+                    placeholder="e.g. Rahul Sharma"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
                   />
                 </div>
@@ -455,7 +506,7 @@ export default function CheckoutPage() {
                     Handover Location: <strong>NIT Raipur Main Building Portico / Innovation Center Desk</strong>.
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    Pickup Window: Daily 5:00 PM – 7:30 PM. Instant size trials available at the desk.
+                    Pickup Window: Daily 5:00 PM – 7:30 PM.
                   </p>
                 </div>
               ) : (
@@ -494,147 +545,103 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* 3. Payment Method Section */}
+            {/* 3. Prepaid UPI Payment Section */}
             <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-5">
-              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                <div className="w-7 h-7 rounded-xl bg-orange-100 text-[#ff782e] flex items-center justify-center font-bold text-xs">
-                  3
-                </div>
-                <h2 className="font-extrabold text-base text-slate-900 font-sans">
-                  Choose Payment Method
-                </h2>
-              </div>
-
-              {/* Payment Tabs */}
-              <div className="grid grid-cols-2 gap-3">
-                <div
-                  onClick={() => setPaymentMethod("upi_qr")}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                    paymentMethod === "upi_qr"
-                      ? "border-[#ff782e] bg-orange-50/40 shadow-sm"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-slate-900 font-sans flex items-center gap-1.5">
-                      <QrCode className="w-4 h-4 text-[#ff782e]" />
-                      Scan UPI QR Code
-                    </span>
-                    <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
-                      Instant
-                    </span>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-orange-100 text-[#ff782e] flex items-center justify-center font-bold text-xs">
+                    3
                   </div>
-                  <p className="text-[11px] text-slate-500">
-                    Google Pay, PhonePe, Paytm, BHIM, Cred
-                  </p>
+                  <h2 className="font-extrabold text-base text-slate-900 font-sans">
+                    Prepaid UPI QR Payment
+                  </h2>
                 </div>
-
-                <div
-                  onClick={() => setPaymentMethod("cash_on_handover")}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                    paymentMethod === "cash_on_handover"
-                      ? "border-[#ff782e] bg-orange-50/40 shadow-sm"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-slate-900 font-sans flex items-center gap-1.5">
-                      <Building className="w-4 h-4 text-[#ff782e]" />
-                      Pay at Handover
-                    </span>
-                    <span className="text-[10px] font-extrabold uppercase bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                      Desk / Cash
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Pay via cash or UPI scan when collecting
-                  </p>
-                </div>
+                <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
+                  100% Prepaid • Zero Extra Fees
+                </span>
               </div>
 
               {/* UPI QR Display Container */}
-              {paymentMethod === "upi_qr" && (
-                <div className="rounded-2xl border border-orange-200 bg-orange-50/30 p-5 space-y-4">
-                  <div className="flex flex-col md:flex-row items-center gap-6">
-                    {/* The QR Code Card */}
-                    <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-md shrink-0 text-center">
-                      <Image
-                        src={qrCodeUrl}
-                        alt="NIT Raipur Store UPI QR Code"
-                        width={210}
-                        height={210}
-                        className="rounded-xl mx-auto"
-                        unoptimized
-                      />
-                      <div className="mt-2 text-[11px] font-mono font-bold text-slate-700">
-                        Amount: ₹{totalPrice}
-                      </div>
-                    </div>
-
-                    {/* QR Payment Guidance */}
-                    <div className="space-y-3 flex-1 text-xs">
-                      <div>
-                        <span className="font-bold text-slate-900 text-sm font-sans block">
-                          Scan & Pay Exactly ₹{totalPrice}
-                        </span>
-                        <p className="text-slate-600 mt-0.5 leading-relaxed">
-                          Open any UPI app (**Google Pay, PhonePe, Paytm, BHIM**) and scan the code. The amount is pre-filled.
-                        </p>
-                      </div>
-
-                      {/* Store UPI ID Pill */}
-                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200 max-w-sm">
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[10px] text-slate-400 block uppercase font-bold">
-                            Store UPI ID
-                          </span>
-                          <span className="font-mono font-bold text-xs text-slate-900 truncate block">
-                            {storeUpiId}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleCopyUpi}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                        >
-                          {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedUpi ? "Copied" : "Copy"}</span>
-                        </button>
-                      </div>
-
-                      {/* Mobile Deep Link */}
-                      <div className="pt-1">
-                        <a
-                          href={upiDeepLink}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-sm"
-                        >
-                          <Smartphone className="w-3.5 h-3.5 text-[#ff782e]" />
-                          <span>Pay via UPI App (Mobile)</span>
-                          <ExternalLink className="w-3 h-3 text-slate-400" />
-                        </a>
-                      </div>
+              <div className="rounded-2xl border border-orange-200 bg-orange-50/30 p-5 space-y-4">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  {/* The QR Code Card */}
+                  <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-md shrink-0 text-center">
+                    <Image
+                      src={qrCodeUrl}
+                      alt="NIT Raipur Store UPI QR Code"
+                      width={210}
+                      height={210}
+                      className="rounded-xl mx-auto"
+                      unoptimized
+                    />
+                    <div className="mt-2 text-xs font-mono font-bold text-slate-900">
+                      Amount: ₹{totalPrice.toLocaleString("en-IN")}
                     </div>
                   </div>
 
-                  {/* 12-Digit UTR Input */}
-                  <div className="pt-3 border-t border-orange-200/60">
-                    <label className="block text-xs font-bold text-slate-900 mb-1">
-                      12-Digit UPI Transaction ID / UTR Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required={paymentMethod === "upi_qr"}
-                      value={upiUtr}
-                      onChange={(e) => setUpiUtr(e.target.value.replace(/\D/g, "").slice(0, 12))}
-                      placeholder="e.g. 431289567123"
-                      className="w-full px-3.5 py-3 rounded-xl border border-slate-300 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-sm text-slate-900 outline-none font-mono tracking-wider bg-white"
-                    />
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Found in your GPay / PhonePe / Paytm receipt under &quot;UPI Ref No.&quot; or &quot;UTR&quot;.
-                    </p>
+                  {/* QR Payment Guidance */}
+                  <div className="space-y-3 flex-1 text-xs">
+                    <div>
+                      <span className="font-bold text-slate-900 text-sm font-sans block">
+                        Scan & Pay Exactly ₹{totalPrice}
+                      </span>
+                      <p className="text-slate-600 mt-0.5 leading-relaxed">
+                        Open Google Pay, PhonePe, Paytm, or BHIM and scan this code. The amount is pre-filled.
+                      </p>
+                    </div>
+
+                    {/* Store UPI ID Pill */}
+                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200 max-w-sm">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold">
+                          Store UPI ID
+                        </span>
+                        <span className="font-mono font-bold text-xs text-slate-900 truncate block">
+                          {storeUpiId}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyUpi}
+                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedUpi ? "Copied" : "Copy"}</span>
+                      </button>
+                    </div>
+
+                    {/* Mobile Deep Link */}
+                    <div className="pt-1">
+                      <a
+                        href={upiDeepLink}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-sm"
+                      >
+                        <Smartphone className="w-3.5 h-3.5 text-[#ff782e]" />
+                        <span>Pay via UPI App (Mobile One-Tap)</span>
+                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                      </a>
+                    </div>
                   </div>
                 </div>
-              )}
+
+                {/* 12-Digit UTR Input */}
+                <div className="pt-3 border-t border-orange-200/60">
+                  <label className="block text-xs font-bold text-slate-900 mb-1">
+                    Enter 12-Digit UPI Transaction ID / UTR Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={upiUtr}
+                    onChange={(e) => setUpiUtr(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                    placeholder="e.g. 431289567123"
+                    className="w-full px-3.5 py-3 rounded-xl border border-slate-300 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-sm text-slate-900 outline-none font-mono tracking-wider bg-white"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Found on your Google Pay / PhonePe / Paytm receipt under &quot;UPI Ref No.&quot; or &quot;UTR&quot;.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Submit Button */}
@@ -652,9 +659,7 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   <span>
-                    {paymentMethod === "upi_qr"
-                      ? `Confirm & Place Order (₹${totalPrice.toLocaleString("en-IN")})`
-                      : `Place Order • Pay at Campus Handover (₹${totalPrice.toLocaleString("en-IN")})`}
+                    Pay ₹{totalPrice.toLocaleString("en-IN")} & Place Order
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
@@ -662,22 +667,22 @@ export default function CheckoutPage() {
             </button>
           </div>
 
-          {/* Right Column: Order Bag Summary */}
+          {/* Right Column: Order Bag Summary with Explicit Size & Color */}
           <div className="lg:col-span-5 sticky top-28 space-y-4">
             <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <h3 className="font-extrabold text-base text-slate-900 font-sans">
-                  Order Summary
+                  Order Summary ({items.length})
                 </h3>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#ff782e]">
-                  {items.length} {items.length === 1 ? "Item" : "Items"}
+                  Official Merchandise
                 </span>
               </div>
 
               {/* Items List */}
               <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                 {items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 text-xs">
+                  <div key={idx} className="flex items-center gap-3 text-xs p-2 rounded-xl bg-slate-50 border border-slate-100">
                     <div className="relative w-14 h-14 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-slate-200">
                       {item.image && (
                         <Image
@@ -691,9 +696,17 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <strong className="block text-slate-900 truncate">{item.name}</strong>
-                      <span className="text-[11px] text-slate-500">
-                        Size: {item.selectedSize || "L"} • Qty: {item.quantity}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        <span className="bg-white text-slate-700 px-1.5 py-0.5 rounded border border-slate-200 font-bold text-[10px]">
+                          Size: {item.selectedSize || "Standard"}
+                        </span>
+                        {item.selectedColorId && item.selectedColorId !== "Standard" && (
+                          <span className="bg-orange-50 text-[#ff782e] px-1.5 py-0.5 rounded border border-orange-200 font-bold text-[10px]">
+                            {item.selectedColorId}
+                          </span>
+                        )}
+                        <span className="text-slate-500 text-[10px]">Qty: {item.quantity}</span>
+                      </div>
                     </div>
                     <div className="text-right font-bold text-slate-900 font-sans">
                       ₹{item.price * item.quantity}
@@ -706,7 +719,7 @@ export default function CheckoutPage() {
               <div className="pt-3 border-t border-slate-200 space-y-2 text-xs text-slate-600">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-bold text-slate-900 font-sans">₹{totalPrice}</span>
+                  <span className="font-bold text-slate-900 font-sans">₹{totalPrice.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Campus Pickup / Handover</span>
@@ -723,7 +736,7 @@ export default function CheckoutPage() {
 
               <div className="pt-2 text-[11px] text-slate-500 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#ff782e] shrink-0" />
-                <span>Direct Handover Desk at NIT Raipur Main Building</span>
+                <span>100% Verified NIT Raipur Merchandise</span>
               </div>
             </div>
           </div>
