@@ -1,59 +1,192 @@
 "use client";
 
 import { useState } from "react";
-import Script from "next/script";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle2, ShieldCheck, MapPin, ArrowRight, ArrowLeft, ShoppingBag, Lock } from "lucide-react";
+import {
+  CheckCircle2,
+  ShieldCheck,
+  MapPin,
+  ArrowRight,
+  ArrowLeft,
+  ShoppingBag,
+  QrCode,
+  Copy,
+  Check,
+  Building,
+  Smartphone,
+  ExternalLink,
+  AlertCircle,
+  Clock,
+  Printer,
+} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@clerk/nextjs";
 
-interface CheckoutForm {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  pincode: string;
+type DeliveryType = "campus_desk" | "hostel_delivery" | "home_delivery";
+type PaymentMethod = "upi_qr" | "cash_on_handover";
+
+interface OrderConfirmationData {
+  order_number: string;
+  order_id: string;
+  total_amount: number;
+  customer_name: string;
+  delivery_type: DeliveryType;
+  delivery_location: string;
+  payment_method: PaymentMethod;
+  upi_utr?: string | null;
 }
 
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
-  }
-}
+const NIT_HOSTELS = [
+  "Hostel H (Sir M. Visvesvaraya Hall)",
+  "Hostel D (Swami Vivekananda Hall)",
+  "Hostel F (Dr. C.V. Raman Hall)",
+  "Hostel B (Shri B.G. Shirke Hall)",
+  "Hostel A (Rabindranath Tagore Hall)",
+  "PG Hostel",
+  "Mahanadi Girls Hostel",
+  "Indravati Girls Hostel",
+  "Senior Girls Hostel",
+];
 
 export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useUser();
-  const [submitted, setSubmitted] = useState(false);
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [orderNumber, setOrderNumber] = useState<string | null>(null);
+
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("campus_desk");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi_qr");
+
+  // Form Fields
+  const [name, setName] = useState(user?.fullName || "");
+  const [rollNumber, setRollNumber] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState(user?.primaryEmailAddress?.emailAddress || "");
+  const [branch, setBranch] = useState("Computer Science & Engineering");
+  const [hostelName, setHostelName] = useState(NIT_HOSTELS[0]);
+  const [roomNumber, setRoomNumber] = useState("");
+  const [outsideAddress, setOutsideAddress] = useState("");
+
+  // UPI State
+  const [upiUtr, setUpiUtr] = useState("");
+  const [copiedUpi, setCopiedUpi] = useState(false);
+
+  // Submission State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<CheckoutForm>({
-    firstName: "",
-    lastName: "",
-    email: user?.primaryEmailAddress?.emailAddress ?? "",
-    phone: "",
-    address: "",
-    city: "Raipur",
-    state: "Chhattisgarh",
-    pincode: "492010",
-  });
+  const [confirmation, setConfirmation] = useState<OrderConfirmationData | null>(null);
 
-  if (items.length === 0 && !submitted) {
+  const storeUpiId = process.env.NEXT_PUBLIC_STORE_UPI_ID || "nitrrfie@sbi";
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || "NIT Raipur Store";
+
+  // Construct UPI Deep Link URL for scanning and mobile app one-tap pay
+  const upiDeepLink = `upi://pay?pa=${encodeURIComponent(storeUpiId)}&pn=${encodeURIComponent(
+    storeName
+  )}&am=${totalPrice}&cu=INR&tn=${encodeURIComponent(`NITRR-Store`)}`;
+
+  // Public QR Generator API for clean, instantaneous QR rendering
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent(
+    upiDeepLink
+  )}`;
+
+  const handleCopyUpi = () => {
+    navigator.clipboard.writeText(storeUpiId);
+    setCopiedUpi(true);
+    setTimeout(() => setCopiedUpi(false), 2000);
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    // Basic Client Validations
+    if (!name.trim()) {
+      setError("Please enter your full name.");
+      setLoading(false);
+      return;
+    }
+    if (!rollNumber.trim()) {
+      setError("Please enter your Student Roll Number / College ID.");
+      setLoading(false);
+      return;
+    }
+    if (!phone.trim() || phone.replace(/\D/g, "").length < 10) {
+      setError("Please enter a valid 10-digit WhatsApp / mobile number.");
+      setLoading(false);
+      return;
+    }
+    if (deliveryType === "hostel_delivery" && !roomNumber.trim()) {
+      setError("Please enter your hostel room number.");
+      setLoading(false);
+      return;
+    }
+    if (paymentMethod === "upi_qr") {
+      const cleanUtr = upiUtr.trim().replace(/\s+/g, "");
+      if (!cleanUtr || cleanUtr.length < 8) {
+        setError(
+          "Please enter the 12-digit UPI Reference Number (UTR / Bank Ref) shown in your payment app after completing the transfer."
+        );
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const response = await fetch("/api/orders/place", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer: {
+            name: name.trim(),
+            rollNumber: rollNumber.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            branch,
+            deliveryType,
+            hostelName: deliveryType === "hostel_delivery" ? hostelName : undefined,
+            roomNumber: deliveryType === "hostel_delivery" ? roomNumber.trim() : undefined,
+            address: deliveryType === "home_delivery" ? outsideAddress.trim() : undefined,
+          },
+          items: items.map((item) => ({
+            id: item.id,
+            slug: item.slug,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            selectedSize: item.selectedSize,
+            selectedColorId: item.selectedColorId,
+            image: item.image,
+          })),
+          totalAmount: totalPrice,
+          paymentMethod,
+          upiUtr: paymentMethod === "upi_qr" ? upiUtr.trim() : undefined,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to place order.");
+      }
+
+      setConfirmation(data);
+      clearCart();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error placing order. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Empty Bag State ──
+  if (items.length === 0 && !confirmation) {
     return (
       <div className="px-4 py-20 max-w-xl mx-auto text-center space-y-5">
         <div className="w-16 h-16 rounded-3xl bg-orange-100 text-[#ff782e] mx-auto flex items-center justify-center">
           <ShoppingBag className="w-8 h-8" />
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900">Your bag is empty</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900 font-sans">Your bag is empty</h1>
         <p className="text-sm text-slate-500">
-          Add some official campus drops to your bag before checking out.
+          Add some official NIT Raipur campus merchandise to your bag before checking out.
         </p>
         <Link
           href="/shop"
@@ -66,419 +199,536 @@ export default function CheckoutPage() {
     );
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setError(null);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      // ── Step 1: Create Razorpay order + save pending order in DB ──────────
-      const createRes = await fetch("/api/payment/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer: {
-            name: `${formData.firstName} ${formData.lastName}`.trim(),
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            city: formData.city,
-            state: formData.state,
-            pincode: formData.pincode,
-          },
-          items: items.map((item) => ({
-            slug: item.slug,
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-            selectedSize: item.selectedSize,
-            selectedColorId: item.selectedColorId,
-            designId: item.designId,
-            designImageUrl: item.designImageUrl,
-          })),
-          totalAmount: Math.round(totalPrice * 100), // convert ₹ to paise
-        }),
-      });
-
-      const createData = await createRes.json();
-      if (!createRes.ok) throw new Error(createData.error || "Failed to create payment order.");
-
-      const { rz_order_id, rz_key, order_id, order_number } = createData;
-
-      // ── Step 2: Open Razorpay checkout modal ──────────────────────────────
-      await new Promise<void>((resolve, reject) => {
-        const rzp = new window.Razorpay({
-          key: rz_key,
-          amount: Math.round(totalPrice * 100),
-          currency: "INR",
-          name: "NITRRFIE Store",
-          description: `NIT Raipur Merch — Order ${order_number}`,
-          order_id: rz_order_id,
-          prefill: {
-            name: `${formData.firstName} ${formData.lastName}`.trim(),
-            email: formData.email,
-            contact: formData.phone,
-          },
-          theme: { color: "#ff782e" },
-          handler: async (response: {
-            razorpay_order_id: string;
-            razorpay_payment_id: string;
-            razorpay_signature: string;
-          }) => {
-            try {
-              // ── Step 3: Verify payment HMAC signature on server ────────────
-              const verifyRes = await fetch("/api/payment/verify", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  rz_order_id: response.razorpay_order_id,
-                  rz_payment_id: response.razorpay_payment_id,
-                  rz_signature: response.razorpay_signature,
-                  order_id,
-                }),
-              });
-
-              const verifyData = await verifyRes.json();
-              if (!verifyRes.ok || !verifyData.success) {
-                throw new Error(verifyData.error || "Payment verification failed.");
-              }
-
-              setOrderId(order_id);
-              setOrderNumber(order_number);
-              setSubmitted(true);
-              clearCart();
-              resolve();
-            } catch (vErr) {
-              reject(vErr);
-            }
-          },
-          modal: {
-            ondismiss: () => {
-              reject(new Error("Payment cancelled by user."));
-            },
-          },
-        });
-
-        rzp.open();
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Payment processing error occurred.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (submitted) {
+  // ── Order Confirmed State ──
+  if (confirmation) {
     return (
-      <div className="px-4 py-16 sm:py-24 max-w-2xl mx-auto text-center">
-        <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 shadow-xl space-y-6">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
-            <CheckCircle2 className="w-9 h-9" />
-          </div>
-
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+      <div className="max-w-3xl mx-auto px-4 py-12 sm:py-16">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 sm:p-8 text-center space-y-2">
+            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md mx-auto flex items-center justify-center text-white mb-2">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black font-sans tracking-tight">
               Order Confirmed!
             </h1>
-            <p className="text-sm text-slate-600 mt-2">
-              Your official NIT Raipur merchandise order has been received and verified.
+            <p className="text-emerald-100 text-xs sm:text-sm max-w-md mx-auto">
+              Your official NIT Raipur merchandise order has been recorded in the campus store inventory.
             </p>
           </div>
 
-          <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 text-left space-y-2.5 text-xs text-slate-700">
-            {orderNumber && (
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Order Number:</span>
-                <span className="font-bold text-slate-900">{orderNumber}</span>
+          {/* Details Body */}
+          <div className="p-6 sm:p-8 space-y-6">
+            {/* Order Reference Box */}
+            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-1">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Official Order Number
+                </span>
+                <span className="text-lg font-mono font-black text-[#ff782e]">
+                  {confirmation.order_number}
+                </span>
               </div>
-            )}
-            {orderId && (
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Order ID:</span>
-                <span className="font-mono text-slate-800">{orderId}</span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700">
+                <div>
+                  <span className="text-slate-400 block">Student Name:</span>
+                  <strong className="text-slate-900">{confirmation.customer_name}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Total Payable:</span>
+                  <strong className="text-slate-900 font-sans text-sm">
+                    ₹{confirmation.total_amount.toLocaleString("en-IN")}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Payment Mode:</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    {confirmation.payment_method === "upi_qr"
+                      ? "UPI QR Payment (Verified)"
+                      : "Pay at Campus Handover"}
+                  </span>
+                </div>
+                {confirmation.upi_utr && (
+                  <div>
+                    <span className="text-slate-400 block">Bank Reference (UTR):</span>
+                    <span className="font-mono font-bold text-slate-900">{confirmation.upi_utr}</span>
+                  </div>
+                )}
               </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-slate-500 font-medium">Total Paid:</span>
-              <span className="font-bold text-slate-900">₹{totalPrice.toLocaleString("en-IN")}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500 font-medium">Campus Handover:</span>
-              <span className="font-bold text-[#ff782e]">NIT Raipur Handover Desk</span>
-            </div>
-          </div>
 
-          <p className="text-xs text-slate-500">
-            A confirmation email will be sent to <strong>{formData.email}</strong> with pickup instructions.
-          </p>
+              <div className="pt-2 border-t border-slate-200 text-xs">
+                <span className="text-slate-400 block">Delivery / Handover Destination:</span>
+                <strong className="text-slate-800">{confirmation.delivery_location}</strong>
+              </div>
+            </div>
 
-          <div className="pt-2">
-            <Link
-              href="/shop"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer"
-            >
-              <span>Back to Store</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {/* Campus Handover Instructions */}
+            <div className="rounded-2xl bg-orange-50 border border-orange-200/80 p-5 space-y-2 text-xs text-slate-700">
+              <div className="flex items-center gap-2 font-bold text-[#ff782e] text-sm font-sans">
+                <Clock className="w-4 h-4" />
+                <span>Collection & Handover Timings</span>
+              </div>
+              <p className="leading-relaxed">
+                Please present this <strong>Order Number ({confirmation.order_number})</strong> and your <strong>Student ID</strong> at the <strong>Campus Handover Desk (NIT Raipur Main Building Portico)</strong> between <strong>5:00 PM – 7:30 PM</strong> to collect your merchandise.
+              </p>
+              <p className="text-[11px] text-slate-500">
+                For hostel delivery, coordinators will arrive at your hostel gate during the evening slot.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="w-full sm:w-1/2 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer shadow-sm"
+              >
+                <Printer className="w-4 h-4 text-slate-600" />
+                <span>Print Order Receipt</span>
+              </button>
+
+              <Link
+                href="/shop"
+                className="w-full sm:w-1/2 py-3.5 rounded-2xl bg-[#ff782e] text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#e05b12] transition-colors shadow-lg shadow-[#ff782e]/25 text-center"
+              >
+                <span>Continue Shopping</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  // ── Main Checkout Form ──
   return (
-    <>
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+      {/* Page Header */}
+      <div className="mb-8">
+        <Link
+          href="/cart"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#ff782e] mb-3 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Bag</span>
+        </Link>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-sans tracking-tight">
+          NIT Raipur Store Checkout
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Fast campus checkout • No passwords required • Official NIT Raipur inventory
+        </p>
+      </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              Checkout & Handover
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-1">
-              Provide student recipient details for verified campus delivery.
-            </p>
-          </div>
-
-          <Link
-            href="/cart"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#ff782e]"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Return to Bag
-          </Link>
-        </div>
-
-        {error && (
-          <div className="p-4 mb-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-            <span>⚠</span>
-            <span>{error}</span>
-          </div>
-        )}
-
+      <form onSubmit={handlePlaceOrder}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          {/* Customer Details Form */}
-          <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6">
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
+          {/* Left Column: Form & Payment Controls */}
+          <div className="lg:col-span-7 space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl flex items-start gap-3 text-xs">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-bold">Please check your details</strong>
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 1. Student Identity Section */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                <span className="w-6 h-6 rounded-full bg-[#ff782e] text-white text-xs font-bold flex items-center justify-center">
+                <div className="w-7 h-7 rounded-xl bg-orange-100 text-[#ff782e] flex items-center justify-center font-bold text-xs">
                   1
-                </span>
-                <h2 className="text-base font-bold text-slate-900 font-sans">
-                  Student & Contact Information
+                </div>
+                <h2 className="font-extrabold text-base text-slate-900 font-sans">
+                  Student & Contact Details
                 </h2>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">First Name *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
                     required
-                    placeholder="e.g. Varun"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#ff782e] bg-slate-50/50"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Rahul Verma"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Last Name *</label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g. Gupta"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#ff782e] bg-slate-50/50"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Email Address *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Student Roll Number / College ID <span className="text-red-500">*</span>
+                  </label>
                   <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
+                    type="text"
                     required
-                    placeholder="student@nitrr.ac.in"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#ff782e] bg-slate-50/50"
+                    value={rollNumber}
+                    onChange={(e) => setRollNumber(e.target.value.toUpperCase())}
+                    placeholder="e.g. 22115042"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none font-mono"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Mobile Phone (10 digits) *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    WhatsApp / Mobile Number <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
                     required
-                    placeholder="9876543210"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#ff782e] bg-slate-50/50"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="10-digit number for pickup alerts"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Email Address <span className="text-slate-400 font-normal">(Receipt)</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. rahul@nitrr.ac.in"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Campus Handover / Delivery */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
+            {/* 2. Campus Delivery Location */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                <span className="w-6 h-6 rounded-full bg-[#ff782e] text-white text-xs font-bold flex items-center justify-center">
+                <div className="w-7 h-7 rounded-xl bg-orange-100 text-[#ff782e] flex items-center justify-center font-bold text-xs">
                   2
-                </span>
-                <h2 className="text-base font-bold text-slate-900 font-sans">
-                  Campus Handover Location / Hostel Address
+                </div>
+                <h2 className="font-extrabold text-base text-slate-900 font-sans">
+                  Select Handover Point
                 </h2>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Hostel / Department / Handover Desk *
-                </label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g. Hostel H, Room 214 or E-Cell Desk Pickup"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#ff782e] bg-slate-50/50"
-                />
+              {/* Delivery Tabs */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryType("campus_desk")}
+                  className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    deliveryType === "campus_desk"
+                      ? "bg-white text-[#ff782e] shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Building className="w-4 h-4" />
+                  <span>Main Building Portico Desk</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeliveryType("hostel_delivery")}
+                  className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    deliveryType === "hostel_delivery"
+                      ? "bg-white text-[#ff782e] shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>Hostel Delivery</span>
+                </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">City</label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-slate-100 cursor-not-allowed"
-                    readOnly
-                  />
+              {deliveryType === "campus_desk" ? (
+                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 space-y-1">
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Free Campus Pickup Desk</span>
+                  </div>
+                  <p>
+                    Handover Location: <strong>NIT Raipur Main Building Portico / Innovation Center Desk</strong>.
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Pickup Window: Daily 5:00 PM – 7:30 PM. Instant size trials available at the desk.
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">State</label>
-                  <input
-                    type="text"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-slate-100 cursor-not-allowed"
-                    readOnly
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">PIN Code</label>
-                  <input
-                    type="text"
-                    name="pincode"
-                    value={formData.pincode}
-                    onChange={handleInputChange}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-slate-100 cursor-not-allowed"
-                    readOnly
-                  />
-                </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Choose Hostel <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={hostelName}
+                      onChange={(e) => setHostelName(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none bg-white"
+                    >
+                      {NIT_HOSTELS.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="p-4 rounded-2xl bg-orange-50/60 border border-orange-200/60 flex items-start gap-3 text-xs text-slate-600">
-                <MapPin className="w-4 h-4 text-[#ff782e] shrink-0 mt-0.5" />
-                <span>
-                  All orders are fulfilled directly inside the National Institute of Technology Raipur campus. You will receive an SMS/Email notification with your exact handover desk slot.
-                </span>
-              </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Room Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={roomNumber}
+                      onChange={(e) => setRoomNumber(e.target.value)}
+                      placeholder="e.g. 214"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Payment Trigger */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between text-xs text-slate-600">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                  256-Bit Encrypted Razorpay Checkout
-                </span>
-                <span className="font-bold text-slate-700">UPI • Cards • NetBanking</span>
+            {/* 3. Payment Method Section */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-5">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <div className="w-7 h-7 rounded-xl bg-orange-100 text-[#ff782e] flex items-center justify-center font-bold text-xs">
+                  3
+                </div>
+                <h2 className="font-extrabold text-base text-slate-900 font-sans">
+                  Choose Payment Method
+                </h2>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-4 rounded-2xl bg-[#ff782e] hover:bg-[#e05b12] text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-[#ff782e]/25 hover:shadow-xl transition-all cursor-pointer disabled:opacity-60"
-              >
-                {loading ? (
-                  <span>Connecting to Razorpay...</span>
-                ) : (
-                  <>
-                    <span>Pay ₹{totalPrice.toLocaleString("en-IN")} via Razorpay</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+              {/* Payment Tabs */}
+              <div className="grid grid-cols-2 gap-3">
+                <div
+                  onClick={() => setPaymentMethod("upi_qr")}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                    paymentMethod === "upi_qr"
+                      ? "border-[#ff782e] bg-orange-50/40 shadow-sm"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900 font-sans flex items-center gap-1.5">
+                      <QrCode className="w-4 h-4 text-[#ff782e]" />
+                      Scan UPI QR Code
+                    </span>
+                    <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
+                      Instant
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Google Pay, PhonePe, Paytm, BHIM, Cred
+                  </p>
+                </div>
 
-          {/* Right Column: Order Review */}
+                <div
+                  onClick={() => setPaymentMethod("cash_on_handover")}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                    paymentMethod === "cash_on_handover"
+                      ? "border-[#ff782e] bg-orange-50/40 shadow-sm"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900 font-sans flex items-center gap-1.5">
+                      <Building className="w-4 h-4 text-[#ff782e]" />
+                      Pay at Handover
+                    </span>
+                    <span className="text-[10px] font-extrabold uppercase bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                      Desk / Cash
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Pay via cash or UPI scan when collecting
+                  </p>
+                </div>
+              </div>
+
+              {/* UPI QR Display Container */}
+              {paymentMethod === "upi_qr" && (
+                <div className="rounded-2xl border border-orange-200 bg-orange-50/30 p-5 space-y-4">
+                  <div className="flex flex-col md:flex-row items-center gap-6">
+                    {/* The QR Code Card */}
+                    <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-md shrink-0 text-center">
+                      <Image
+                        src={qrCodeUrl}
+                        alt="NIT Raipur Store UPI QR Code"
+                        width={210}
+                        height={210}
+                        className="rounded-xl mx-auto"
+                        unoptimized
+                      />
+                      <div className="mt-2 text-[11px] font-mono font-bold text-slate-700">
+                        Amount: ₹{totalPrice}
+                      </div>
+                    </div>
+
+                    {/* QR Payment Guidance */}
+                    <div className="space-y-3 flex-1 text-xs">
+                      <div>
+                        <span className="font-bold text-slate-900 text-sm font-sans block">
+                          Scan & Pay Exactly ₹{totalPrice}
+                        </span>
+                        <p className="text-slate-600 mt-0.5 leading-relaxed">
+                          Open any UPI app (**Google Pay, PhonePe, Paytm, BHIM**) and scan the code. The amount is pre-filled.
+                        </p>
+                      </div>
+
+                      {/* Store UPI ID Pill */}
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200 max-w-sm">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold">
+                            Store UPI ID
+                          </span>
+                          <span className="font-mono font-bold text-xs text-slate-900 truncate block">
+                            {storeUpiId}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyUpi}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedUpi ? "Copied" : "Copy"}</span>
+                        </button>
+                      </div>
+
+                      {/* Mobile Deep Link */}
+                      <div className="pt-1">
+                        <a
+                          href={upiDeepLink}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-sm"
+                        >
+                          <Smartphone className="w-3.5 h-3.5 text-[#ff782e]" />
+                          <span>Pay via UPI App (Mobile)</span>
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 12-Digit UTR Input */}
+                  <div className="pt-3 border-t border-orange-200/60">
+                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                      12-Digit UPI Transaction ID / UTR Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required={paymentMethod === "upi_qr"}
+                      value={upiUtr}
+                      onChange={(e) => setUpiUtr(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                      placeholder="e.g. 431289567123"
+                      className="w-full px-3.5 py-3 rounded-xl border border-slate-300 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-sm text-slate-900 outline-none font-mono tracking-wider bg-white"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Found in your GPay / PhonePe / Paytm receipt under &quot;UPI Ref No.&quot; or &quot;UTR&quot;.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-4 rounded-2xl font-bold font-sans text-sm flex items-center justify-center gap-2 shadow-xl transition-all cursor-pointer ${
+                loading
+                  ? "bg-slate-400 text-white cursor-not-allowed"
+                  : "bg-[#ff782e] hover:bg-[#e05b12] text-white shadow-[#ff782e]/25 hover:shadow-2xl"
+              }`}
+            >
+              {loading ? (
+                <span>Recording Order...</span>
+              ) : (
+                <>
+                  <span>
+                    {paymentMethod === "upi_qr"
+                      ? `Confirm & Place Order (₹${totalPrice.toLocaleString("en-IN")})`
+                      : `Place Order • Pay at Campus Handover (₹${totalPrice.toLocaleString("en-IN")})`}
+                  </span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Right Column: Order Bag Summary */}
           <div className="lg:col-span-5 sticky top-28 space-y-4">
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-5">
-              <h3 className="font-bold text-base text-slate-900 pb-3 border-b border-slate-100">
-                Order Review ({items.length} items)
-              </h3>
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="font-extrabold text-base text-slate-900 font-sans">
+                  Order Summary
+                </h3>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-[#ff782e]">
+                  {items.length} {items.length === 1 ? "Item" : "Items"}
+                </span>
+              </div>
 
-              <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto pr-1">
+              {/* Items List */}
+              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                 {items.map((item, idx) => (
-                  <div key={`${item.id}-${idx}`} className="py-3 flex items-center gap-3">
-                    <div className="relative w-12 h-12 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-slate-100">
+                  <div key={idx} className="flex items-center gap-3 text-xs">
+                    <div className="relative w-14 h-14 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-slate-200">
                       {item.image && (
-                        <Image src={item.image} alt={item.name} fill className="object-cover" />
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                          sizes="56px"
+                        />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-bold text-slate-900 truncate">{item.name}</h4>
-                      <p className="text-[11px] text-slate-500">
-                        Size: <span className="font-bold text-slate-800">{item.selectedSize || "L"}</span> • Qty: {item.quantity}
-                      </p>
+                      <strong className="block text-slate-900 truncate">{item.name}</strong>
+                      <span className="text-[11px] text-slate-500">
+                        Size: {item.selectedSize || "L"} • Qty: {item.quantity}
+                      </span>
                     </div>
-                    <div className="text-xs font-bold text-slate-900 font-sans">
+                    <div className="text-right font-bold text-slate-900 font-sans">
                       ₹{item.price * item.quantity}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-3 border-t border-slate-100 space-y-2 text-xs">
-                <div className="flex justify-between text-slate-500">
+              {/* Price Calculation */}
+              <div className="pt-3 border-t border-slate-200 space-y-2 text-xs text-slate-600">
+                <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-bold text-slate-900">₹{totalPrice.toLocaleString("en-IN")}</span>
+                  <span className="font-bold text-slate-900 font-sans">₹{totalPrice}</span>
                 </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>Campus Pickup</span>
+                <div className="flex justify-between">
+                  <span>Campus Pickup / Handover</span>
                   <span className="font-bold text-emerald-600">FREE</span>
                 </div>
-                <div className="flex justify-between items-baseline pt-2 border-t border-slate-100 text-sm font-bold text-slate-900">
-                  <span>Total Amount</span>
-                  <span className="text-xl font-black text-slate-900">₹{totalPrice.toLocaleString("en-IN")}</span>
-                </div>
               </div>
-            </div>
 
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 text-xs text-slate-500 flex items-center gap-3">
-              <ShieldCheck className="w-5 h-5 text-[#ff782e] shrink-0" />
-              <span>Official NITRRFIE merchandise fulfillment guarantee with on-campus size verification.</span>
+              <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline">
+                <span className="font-bold text-slate-900 text-sm">Total Amount</span>
+                <span className="text-2xl font-black text-slate-900 font-sans">
+                  ₹{totalPrice.toLocaleString("en-IN")}
+                </span>
+              </div>
+
+              <div className="pt-2 text-[11px] text-slate-500 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#ff782e] shrink-0" />
+                <span>Direct Handover Desk at NIT Raipur Main Building</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </>
+      </form>
+    </div>
   );
 }

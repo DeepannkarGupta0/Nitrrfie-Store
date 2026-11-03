@@ -42,7 +42,7 @@ export default function QuickViewModal({
     addItem({
       id: product.id,
       slug: product.slug,
-      sku: `NITRRFIE-${product.id}-${selectedSize}`,
+      sku: `NETRIFY-${product.id}-${selectedSize}`,
       name: product.name,
       tagline: product.tagline,
       price: product.price,
@@ -149,11 +149,10 @@ export default function QuickViewModal({
                       key={c.name}
                       type="button"
                       onClick={() => setSelectedColor(c.name)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-2 cursor-pointer transition-all ${
-                        isSelected
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-2 cursor-pointer transition-all ${isSelected
                           ? "border-[#ff782e] bg-orange-50/70 text-[#ff782e] font-bold"
                           : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       <span
                         className="w-3.5 h-3.5 rounded-full border border-black/10 inline-block"
@@ -182,11 +181,10 @@ export default function QuickViewModal({
                       key={s}
                       type="button"
                       onClick={() => setSelectedSize(s)}
-                      className={`w-11 h-10 rounded-xl text-xs font-bold font-sans transition-all border cursor-pointer ${
-                        isSelected
+                      className={`w-11 h-10 rounded-xl text-xs font-bold font-sans transition-all border cursor-pointer ${isSelected
                           ? "bg-[#ff782e] text-white border-[#ff782e] shadow-md shadow-[#ff782e]/25"
                           : "bg-white text-slate-700 border-slate-200 hover:border-slate-400"
-                      }`}
+                        }`}
                     >
                       {s}
                     </button>
@@ -214,11 +212,10 @@ export default function QuickViewModal({
               type="button"
               onClick={handleAddToCart}
               disabled={added}
-              className={`w-full py-3.5 rounded-2xl font-sans font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
-                added
+              className={`w-full py-3.5 rounded-2xl font-sans font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${added
                   ? "bg-emerald-600 text-white shadow-emerald-500/25"
                   : "bg-[#ff782e] hover:bg-[#e05b12] text-white shadow-[#ff782e]/25 hover:shadow-xl"
-              }`}
+                }`}
             >
               {added ? (
                 <>

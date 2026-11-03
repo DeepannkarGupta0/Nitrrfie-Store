@@ -8,7 +8,6 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 
 const isProtectedRoute = createRouteMatcher([
   '/account(.*)',
-  '/checkout(.*)',
   '/admin(.*)',
 ]);
 
@@ -17,6 +16,7 @@ const isPublicApiRoute = createRouteMatcher([
   '/api/public(.*)',
   '/api/payment/webhook',
   '/api/orders/submit',
+  '/api/orders/place',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
