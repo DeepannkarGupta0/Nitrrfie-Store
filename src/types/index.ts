@@ -95,10 +95,22 @@ export interface ShippingAddress {
   name: string;
   email: string;
   phone: string;
-  address: string;
+  address?: string;
   city: string;
   state: string;
   pincode: string;
+  delivery_type?: string;
+  roll_number?: string;
+  hostel_name?: string;
+  room_number?: string;
+  address_line1?: string;
+  address_line2?: string;
+  landmark?: string;
+  formatted_address?: string;
+  payment_method?: string;
+  upi_utr?: string;
+  store_upi_id?: string;
+  store_phone?: string;
 }
 
 export interface Payment {

@@ -10,7 +10,6 @@ import {
   ArrowRight,
   ArrowLeft,
   ShoppingBag,
-  QrCode,
   Copy,
   Check,
   Building,
@@ -19,23 +18,27 @@ import {
   AlertCircle,
   Clock,
   Printer,
-  CreditCard,
+  Truck,
+  PhoneCall,
+  Info,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@clerk/nextjs";
 
-type DeliveryType = "campus_desk" | "hostel_delivery" | "home_delivery";
+type DeliveryMode = "pan_india" | "campus_pickup";
+type CampusDeliveryOption = "campus_desk" | "hostel_delivery";
 
 interface OrderConfirmationData {
   order_number: string;
   order_id: string;
   total_amount: number;
   customer_name: string;
-  roll_number: string;
-  delivery_type: DeliveryType;
+  roll_number?: string;
+  delivery_type: string;
   delivery_location: string;
   payment_method: string;
   upi_utr: string;
+  shipping_address?: Record<string, any>;
   items: Array<{
     name: string;
     selectedSize?: string;
@@ -58,20 +61,69 @@ const NIT_HOSTELS = [
   "Senior Girls Hostel",
 ];
 
+const INDIAN_STATES_AND_UTS = [
+  "Andaman and Nicobar Islands",
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chandigarh",
+  "Chhattisgarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi (NCT)",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jammu and Kashmir",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Ladakh",
+  "Lakshadweep",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Puducherry",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+];
+
 export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useUser();
 
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>("campus_desk");
+  // Delivery Mode Selection
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("pan_india");
+  const [campusOption, setCampusOption] = useState<CampusDeliveryOption>("campus_desk");
 
-  // Form Fields
+  // Customer Contact Fields
   const [name, setName] = useState(user?.fullName || "");
-  const [rollNumber, setRollNumber] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState(user?.primaryEmailAddress?.emailAddress || "");
+  const [rollNumber, setRollNumber] = useState("");
+
+  // PAN India Address Fields
+  const [addressLine1, setAddressLine1] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("Chhattisgarh");
+  const [pincode, setPincode] = useState("");
+
+  // Campus Delivery Fields
   const [hostelName, setHostelName] = useState(NIT_HOSTELS[0]);
   const [roomNumber, setRoomNumber] = useState("");
-  const [outsideAddress, setOutsideAddress] = useState("");
 
   // UPI State
   const [upiUtr, setUpiUtr] = useState("");
@@ -82,10 +134,11 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<OrderConfirmationData | null>(null);
 
-  const storeUpiId = process.env.NEXT_PUBLIC_STORE_UPI_ID || "nitrrfie@sbi";
+  const storeUpiId = process.env.NEXT_PUBLIC_STORE_UPI_ID || "7974766166@axl";
+  const storePhone = process.env.NEXT_PUBLIC_STORE_PHONE || "7974766166";
   const storeName = process.env.NEXT_PUBLIC_STORE_NAME || "NIT Raipur Store";
 
-  // Construct UPI Deep Link URL for scanning and mobile app one-tap pay
+  // Construct UPI Deep Link for scanning and mobile app one-tap pay
   const upiDeepLink = `upi://pay?pa=${encodeURIComponent(storeUpiId)}&pn=${encodeURIComponent(
     storeName
   )}&am=${totalPrice}&cu=INR&tn=${encodeURIComponent(`NITRR-Store`)}`;
@@ -112,30 +165,64 @@ export default function CheckoutPage() {
       setLoading(false);
       return;
     }
-    if (!rollNumber.trim()) {
-      setError("Please enter your Student Roll Number / College ID.");
-      setLoading(false);
-      return;
-    }
-    if (!phone.trim() || phone.replace(/\D/g, "").length < 10) {
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
       setError("Please enter a valid 10-digit WhatsApp / mobile number.");
       setLoading(false);
       return;
     }
-    if (deliveryType === "hostel_delivery" && !roomNumber.trim()) {
-      setError("Please enter your hostel room number.");
+    if (!email.trim() || !email.includes("@")) {
+      setError("Please enter a valid email address for order notifications.");
       setLoading(false);
       return;
+    }
+
+    if (deliveryMode === "pan_india") {
+      if (!addressLine1.trim()) {
+        setError("Please enter your flat / house / street address.");
+        setLoading(false);
+        return;
+      }
+      if (!city.trim()) {
+        setError("Please enter your city / town.");
+        setLoading(false);
+        return;
+      }
+      if (!state.trim()) {
+        setError("Please select your state or union territory.");
+        setLoading(false);
+        return;
+      }
+      const cleanPin = pincode.replace(/\D/g, "");
+      if (cleanPin.length !== 6) {
+        setError("Please enter a valid 6-digit postal PIN code.");
+        setLoading(false);
+        return;
+      }
+    } else {
+      // campus_pickup
+      if (campusOption === "hostel_delivery" && !roomNumber.trim()) {
+        setError("Please enter your hostel room number.");
+        setLoading(false);
+        return;
+      }
     }
 
     const cleanUtr = upiUtr.trim().replace(/\s+/g, "");
     if (!cleanUtr || cleanUtr.length < 8) {
       setError(
-        "Please enter the 12-digit UPI Transaction ID (UTR / Bank Ref Number) after completing the UPI payment."
+        "Please enter the 12-digit UPI Transaction ID (UTR / Bank Ref Number) after completing the payment."
       );
       setLoading(false);
       return;
     }
+
+    const effectiveDeliveryType =
+      deliveryMode === "pan_india"
+        ? "pan_india"
+        : campusOption === "hostel_delivery"
+        ? "hostel_delivery"
+        : "campus_desk";
 
     try {
       const orderPayloadItems = items.map((item) => ({
@@ -155,13 +242,17 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           customer: {
             name: name.trim(),
-            rollNumber: rollNumber.trim().toUpperCase(),
+            phone: cleanPhone,
             email: email.trim(),
-            phone: phone.trim(),
-            deliveryType,
-            hostelName: deliveryType === "hostel_delivery" ? hostelName : undefined,
-            roomNumber: deliveryType === "hostel_delivery" ? roomNumber.trim() : undefined,
-            address: deliveryType === "home_delivery" ? outsideAddress.trim() : undefined,
+            rollNumber: rollNumber.trim().toUpperCase() || undefined,
+            deliveryType: effectiveDeliveryType,
+            addressLine1: deliveryMode === "pan_india" ? addressLine1.trim() : undefined,
+            addressLine2: deliveryMode === "pan_india" ? addressLine2.trim() : undefined,
+            city: deliveryMode === "pan_india" ? city.trim() : "Raipur",
+            state: deliveryMode === "pan_india" ? state.trim() : "Chhattisgarh",
+            pincode: deliveryMode === "pan_india" ? pincode.replace(/\D/g, "") : "492010",
+            hostelName: effectiveDeliveryType === "hostel_delivery" ? hostelName : undefined,
+            roomNumber: effectiveDeliveryType === "hostel_delivery" ? roomNumber.trim() : undefined,
           },
           items: orderPayloadItems,
           totalAmount: totalPrice,
@@ -177,7 +268,6 @@ export default function CheckoutPage() {
 
       setConfirmation({
         ...data,
-        roll_number: rollNumber.trim().toUpperCase(),
         items: orderPayloadItems,
       });
       clearCart();
@@ -197,7 +287,7 @@ export default function CheckoutPage() {
         </div>
         <h1 className="text-3xl font-extrabold text-slate-900 font-sans">Your bag is empty</h1>
         <p className="text-sm text-slate-500">
-          Add some official NIT Raipur campus merchandise to your bag before checking out.
+          Add official NIT Raipur campus merchandise to your bag before checking out.
         </p>
         <Link
           href="/shop"
@@ -224,7 +314,7 @@ export default function CheckoutPage() {
               Order Confirmed & Payment Recorded!
             </h1>
             <p className="text-emerald-100 text-xs sm:text-sm max-w-md mx-auto">
-              Your official NIT Raipur merchandise order has been recorded with your unique order ID.
+              Your official order has been placed with a unique tracking reference. Details are saved in the system.
             </p>
           </div>
 
@@ -253,17 +343,19 @@ export default function CheckoutPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700">
                 <div>
-                  <span className="text-slate-400 block">Student Name:</span>
+                  <span className="text-slate-400 block">Customer Name:</span>
                   <strong className="text-slate-900">{confirmation.customer_name}</strong>
                 </div>
-                <div>
-                  <span className="text-slate-400 block">Roll Number / ID:</span>
-                  <strong className="text-slate-900 font-mono">{confirmation.roll_number}</strong>
-                </div>
+                {confirmation.roll_number && (
+                  <div>
+                    <span className="text-slate-400 block">Student Roll No / ID:</span>
+                    <strong className="text-slate-900 font-mono">{confirmation.roll_number}</strong>
+                  </div>
+                )}
                 <div>
                   <span className="text-slate-400 block">Payment Mode:</span>
                   <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Prepaid UPI (Recorded)
+                    Prepaid UPI (Captured)
                   </span>
                 </div>
                 <div>
@@ -275,8 +367,12 @@ export default function CheckoutPage() {
               </div>
 
               <div className="pt-2 border-t border-slate-200 text-xs">
-                <span className="text-slate-400 block">Delivery / Handover Destination:</span>
-                <strong className="text-slate-800">{confirmation.delivery_location}</strong>
+                <span className="text-slate-400 block">
+                  {confirmation.delivery_type === "pan_india" ? "Shipping Address (PAN India):" : "Handover Location:"}
+                </span>
+                <strong className="text-slate-800 leading-relaxed block mt-0.5">
+                  {confirmation.delivery_location}
+                </strong>
               </div>
             </div>
 
@@ -317,14 +413,31 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Campus Handover Instructions */}
+            {/* Dispatch & Delivery Notice */}
             <div className="rounded-2xl bg-orange-50 border border-orange-200/80 p-5 space-y-2 text-xs text-slate-700">
               <div className="flex items-center gap-2 font-bold text-[#ff782e] text-sm font-sans">
-                <Clock className="w-4 h-4" />
-                <span>Collection & Handover Timings</span>
+                {confirmation.delivery_type === "pan_india" ? (
+                  <>
+                    <Truck className="w-4 h-4" />
+                    <span>PAN India Doorstep Shipping Notice</span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-4 h-4" />
+                    <span>Campus Handover Desk Collection</span>
+                  </>
+                )}
               </div>
               <p className="leading-relaxed">
-                Please present this <strong>Order ID ({confirmation.order_number})</strong> and your <strong>Student ID</strong> at the <strong>Campus Handover Desk (NIT Raipur Main Building Portico)</strong> between <strong>5:00 PM – 7:30 PM</strong> to collect your merchandise.
+                {confirmation.delivery_type === "pan_india" ? (
+                  <>
+                    Your package is queued for order packing and courier dispatch. You will receive tracking alerts on your mobile phone and email. For any delivery queries, reach out on WhatsApp/Call: <strong>+91 {storePhone}</strong>.
+                  </>
+                ) : (
+                  <>
+                    Please show your <strong>Order ID ({confirmation.order_number})</strong> at the <strong>Campus Handover Desk (NIT Raipur Main Building Portico)</strong> between <strong>5:00 PM – 7:30 PM</strong> to collect your merchandise.
+                  </>
+                )}
               </p>
             </div>
 
@@ -366,10 +479,10 @@ export default function CheckoutPage() {
           <span>Back to Bag</span>
         </Link>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-sans tracking-tight">
-          NIT Raipur Store Checkout
+          Secure Store Checkout
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Direct campus checkout • Official NIT Raipur inventory • 100% Prepaid UPI
+          PAN India Delivery • Official NIT Raipur Merchandise • 100% Prepaid UPI
         </p>
       </div>
 
@@ -387,14 +500,14 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* 1. Student Identity Section */}
+            {/* 1. Customer Identity Section */}
             <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
                 <div className="w-7 h-7 rounded-xl bg-orange-100 text-[#ff782e] flex items-center justify-center font-bold text-xs">
                   1
                 </div>
                 <h2 className="font-extrabold text-base text-slate-900 font-sans">
-                  Student & Contact Details
+                  Contact & Customer Details
                 </h2>
               </div>
 
@@ -415,20 +528,6 @@ export default function CheckoutPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Student Roll Number / College ID <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={rollNumber}
-                    onChange={(e) => setRollNumber(e.target.value.toUpperCase())}
-                    placeholder="e.g. 22115042"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     WhatsApp / Mobile Number <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -436,116 +535,255 @@ export default function CheckoutPage() {
                     required
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="10-digit number for pickup alerts"
+                    placeholder="10-digit mobile number"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Email Address <span className="text-slate-400 font-normal">(Receipt)</span>
+                    Email Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
+                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. rahul@nitrr.ac.in"
+                    placeholder="e.g. rahul@example.com"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Roll No / Student ID <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={rollNumber}
+                    onChange={(e) => setRollNumber(e.target.value.toUpperCase())}
+                    placeholder="e.g. 22115042 (if student)"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none font-mono"
                   />
                 </div>
               </div>
             </div>
 
-            {/* 2. Campus Delivery Location */}
+            {/* 2. Delivery Address: PAN India & Campus Handover */}
             <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                <div className="w-7 h-7 rounded-xl bg-orange-100 text-[#ff782e] flex items-center justify-center font-bold text-xs">
-                  2
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-orange-100 text-[#ff782e] flex items-center justify-center font-bold text-xs">
+                    2
+                  </div>
+                  <h2 className="font-extrabold text-base text-slate-900 font-sans">
+                    Delivery Destination
+                  </h2>
                 </div>
-                <h2 className="font-extrabold text-base text-slate-900 font-sans">
-                  Select Handover Point
-                </h2>
+                <span className="text-[10px] font-bold uppercase bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200">
+                  PAN India Serviceable
+                </span>
               </div>
 
-              {/* Delivery Tabs */}
+              {/* Delivery Mode Tabs: PAN India vs NIT Campus */}
               <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl">
                 <button
                   type="button"
-                  onClick={() => setDeliveryType("campus_desk")}
+                  onClick={() => setDeliveryMode("pan_india")}
                   className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    deliveryType === "campus_desk"
+                    deliveryMode === "pan_india"
+                      ? "bg-white text-[#ff782e] shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Truck className="w-4 h-4" />
+                  <span>Doorstep Delivery (PAN India)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeliveryMode("campus_pickup")}
+                  className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    deliveryMode === "campus_pickup"
                       ? "bg-white text-[#ff782e] shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   <Building className="w-4 h-4" />
-                  <span>Main Building Portico Desk</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDeliveryType("hostel_delivery")}
-                  className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    deliveryType === "hostel_delivery"
-                      ? "bg-white text-[#ff782e] shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <MapPin className="w-4 h-4" />
-                  <span>Hostel Delivery</span>
+                  <span>NIT Raipur Campus Handover</span>
                 </button>
               </div>
 
-              {deliveryType === "campus_desk" ? (
-                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 space-y-1">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Free Campus Pickup Desk</span>
-                  </div>
-                  <p>
-                    Handover Location: <strong>NIT Raipur Main Building Portico / Innovation Center Desk</strong>.
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Pickup Window: Daily 5:00 PM – 7:30 PM.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Choose Hostel <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={hostelName}
-                      onChange={(e) => setHostelName(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none bg-white"
-                    >
-                      {NIT_HOSTELS.map((h) => (
-                        <option key={h} value={h}>
-                          {h}
-                        </option>
-                      ))}
-                    </select>
+              {/* PAN India Address Inputs */}
+              {deliveryMode === "pan_india" ? (
+                <div className="space-y-4 pt-1">
+                  <div className="p-3 rounded-xl bg-orange-50/60 border border-orange-200/60 text-xs text-slate-700 flex items-start gap-2">
+                    <Info className="w-4 h-4 text-[#ff782e] shrink-0 mt-0.5" />
+                    <span>
+                      We deliver across all 28 States and 8 Union Territories in India. Enter your exact address for smooth courier delivery.
+                    </span>
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Room Number <span className="text-red-500">*</span>
+                      Flat / House No. / Building / Street Address <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      required
-                      value={roomNumber}
-                      onChange={(e) => setRoomNumber(e.target.value)}
-                      placeholder="e.g. 214"
+                      required={deliveryMode === "pan_india"}
+                      value={addressLine1}
+                      onChange={(e) => setAddressLine1(e.target.value)}
+                      placeholder="e.g. Flat 302, Royal Palms, 5th Cross Road"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Area / Sector / Landmark <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={addressLine2}
+                      onChange={(e) => setAddressLine2(e.target.value)}
+                      placeholder="e.g. Near City Center Mall, Indiranagar"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        City / District <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required={deliveryMode === "pan_india"}
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="e.g. Bengaluru / Raipur"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        State / Union Territory <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none bg-white"
+                      >
+                        {INDIAN_STATES_AND_UTS.map((st) => (
+                          <option key={st} value={st}>
+                            {st}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        6-Digit PIN Code <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required={deliveryMode === "pan_india"}
+                        maxLength={6}
+                        value={pincode}
+                        onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="e.g. 560038"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* NIT Campus Delivery Options */
+                <div className="space-y-4 pt-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCampusOption("campus_desk")}
+                      className={`p-3 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
+                        campusOption === "campus_desk"
+                          ? "border-[#ff782e] bg-orange-50/50 text-[#ff782e]"
+                          : "border-slate-200 hover:border-slate-300 text-slate-700"
+                      }`}
+                    >
+                      <Building className="w-4 h-4 mb-1" />
+                      <div>Main Building Portico</div>
+                      <span className="text-[10px] text-slate-500 font-normal">Free Desk Handover</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCampusOption("hostel_delivery")}
+                      className={`p-3 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
+                        campusOption === "hostel_delivery"
+                          ? "border-[#ff782e] bg-orange-50/50 text-[#ff782e]"
+                          : "border-slate-200 hover:border-slate-300 text-slate-700"
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4 mb-1" />
+                      <div>NIT Hostel Delivery</div>
+                      <span className="text-[10px] text-slate-500 font-normal">Delivered to Hostel</span>
+                    </button>
+                  </div>
+
+                  {campusOption === "campus_desk" ? (
+                    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 space-y-1">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Free Campus Pickup Desk</span>
+                      </div>
+                      <p>
+                        Location: <strong>NIT Raipur Main Building Portico / Innovation Center Handover Point</strong>.
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Handover Window: Daily 5:00 PM – 7:30 PM.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Select Hostel <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={hostelName}
+                          onChange={(e) => setHostelName(e.target.value)}
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none bg-white"
+                        >
+                          {NIT_HOSTELS.map((h) => (
+                            <option key={h} value={h}>
+                              {h}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Room Number <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required={deliveryMode === "campus_pickup" && campusOption === "hostel_delivery"}
+                          value={roomNumber}
+                          onChange={(e) => setRoomNumber(e.target.value)}
+                          placeholder="e.g. 214"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#ff782e] focus:ring-1 focus:ring-[#ff782e] text-xs text-slate-900 outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* 3. Prepaid UPI Payment Section */}
+            {/* 3. 100% Prepaid UPI Payment Section */}
             <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -557,7 +795,7 @@ export default function CheckoutPage() {
                   </h2>
                 </div>
                 <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
-                  100% Prepaid • Zero Extra Fees
+                  100% Prepaid • Instant Recording
                 </span>
               </div>
 
@@ -586,7 +824,7 @@ export default function CheckoutPage() {
                         Scan & Pay Exactly ₹{totalPrice}
                       </span>
                       <p className="text-slate-600 mt-0.5 leading-relaxed">
-                        Open Google Pay, PhonePe, Paytm, or BHIM and scan this code. The amount is pre-filled.
+                        Open Google Pay, PhonePe, Paytm, or BHIM and scan this QR code. The exact payable amount of ₹{totalPrice} is pre-filled.
                       </p>
                     </div>
 
@@ -610,7 +848,15 @@ export default function CheckoutPage() {
                       </button>
                     </div>
 
-                    {/* Mobile Deep Link */}
+                    {/* Store Support Helpline Phone */}
+                    <div className="flex items-center gap-2 text-slate-600 text-[11px]">
+                      <PhoneCall className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>
+                        Payment / Order Support: <strong className="text-slate-900 font-mono">+91 {storePhone}</strong>
+                      </span>
+                    </div>
+
+                    {/* Mobile One-Tap Link */}
                     <div className="pt-1">
                       <a
                         href={upiDeepLink}
@@ -682,7 +928,7 @@ export default function CheckoutPage() {
               {/* Items List */}
               <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                 {items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 text-xs p-2 rounded-xl bg-slate-50 border border-slate-100">
+                  <div key={idx} className="flex items-center gap-3 text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                     <div className="relative w-14 h-14 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-slate-200">
                       {item.image && (
                         <Image
@@ -722,7 +968,7 @@ export default function CheckoutPage() {
                   <span className="font-bold text-slate-900 font-sans">₹{totalPrice.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Campus Pickup / Handover</span>
+                  <span>Shipping & Delivery</span>
                   <span className="font-bold text-emerald-600">FREE</span>
                 </div>
               </div>
@@ -736,7 +982,7 @@ export default function CheckoutPage() {
 
               <div className="pt-2 text-[11px] text-slate-500 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#ff782e] shrink-0" />
-                <span>100% Verified NIT Raipur Merchandise</span>
+                <span>100% Authentic NIT Raipur Merchandise</span>
               </div>
             </div>
           </div>

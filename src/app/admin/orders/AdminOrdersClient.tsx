@@ -49,17 +49,25 @@ function OrderDetailModal({ order, onClose, onRetry }: OrderDetailModalProps) {
         <div className="p-6 space-y-6">
           {/* Customer Info */}
           <section>
-            <h3 className="font-mono text-sm uppercase font-bold mb-3 border-b border-brutal-black/20 pb-2">Student & Handover Details</h3>
+            <h3 className="font-mono text-sm uppercase font-bold mb-3 border-b border-brutal-black/20 pb-2">Customer & Delivery Details</h3>
             <div className="grid grid-cols-2 gap-2 font-sans text-sm">
               <span className="text-brutal-black/60">Name</span><span className="font-bold">{order.customer_name}</span>
-              <span className="text-brutal-black/60">Roll Number / ID</span><span className="font-mono font-bold text-accent">{(order.shipping_address as any)?.roll_number || order.user_id}</span>
+              <span className="text-brutal-black/60">Roll Number / ID</span><span className="font-mono font-bold text-accent">{(order.shipping_address as any)?.roll_number || order.user_id || "N/A"}</span>
               <span className="text-brutal-black/60">WhatsApp / Phone</span><span>{order.customer_phone || "—"}</span>
               <span className="text-brutal-black/60">Email</span><span>{order.customer_email}</span>
-              <span className="text-brutal-black/60">Delivery Point</span>
+              <span className="text-brutal-black/60">Delivery Mode</span>
               <span className="font-bold">
-                {(order.shipping_address as any)?.delivery_type === "hostel_delivery"
-                  ? `${(order.shipping_address as any)?.hostel_name}, Room ${(order.shipping_address as any)?.room_number}`
-                  : "Main Building Portico Handover Desk"}
+                {(order.shipping_address as any)?.delivery_type === "pan_india"
+                  ? "PAN India Doorstep Delivery"
+                  : (order.shipping_address as any)?.delivery_type === "hostel_delivery"
+                  ? "NIT Raipur Hostel Handover"
+                  : "NIT Raipur Portico Desk Pickup"}
+              </span>
+              <span className="text-brutal-black/60">Delivery Address</span>
+              <span className="font-bold leading-relaxed">
+                {(order.shipping_address as any)?.formatted_address ||
+                 (order.shipping_address as any)?.address ||
+                 "NIT Raipur Campus Handover"}
               </span>
             </div>
           </section>
