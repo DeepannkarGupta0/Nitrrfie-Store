@@ -59,11 +59,16 @@ export async function handleCartEvents(req: ApiRequest, res: ApiResponse) {
   const db = getStoreDatabase();
   const initialCart = getUserCart(db, auth.userId);
   res.write(
-    `event: connected\ndata: ${JSON.stringify({
+    `retry: 30000\nevent: connected\ndata: ${JSON.stringify({
       version: initialCart.version,
       updatedAt: initialCart.updatedAt,
     })}\n\n`
   );
+
+  if (process.env.VERCEL === '1') {
+    res.end();
+    return;
+  }
 
   const unsubscribe = subscribeToUserCartEvents(auth.userId, (event) => {
     res.write(`event: cart_updated\ndata: ${JSON.stringify(event)}\n\n`);
