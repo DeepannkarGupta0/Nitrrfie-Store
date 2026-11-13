@@ -86,6 +86,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [preservedEmail, setPreservedEmail] = useState('');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [widgetRetryKey, setWidgetRetryKey] = useState(0);
+  const [clerkLoadTimedOut, setClerkLoadTimedOut] = useState(false);
   const wasSignedInRef = useRef(isSignedIn);
 
   // Close on Escape key & lock body scroll while open
@@ -104,6 +105,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen || !isClerkEnabled || isLoaded) {
+      setClerkLoadTimedOut(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setClerkLoadTimedOut(true);
+    }, 6000);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, isClerkEnabled, isLoaded, widgetRetryKey]);
 
   // Notify cleanly when user completes authentication inside the modal
   useEffect(() => {
@@ -208,13 +220,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {/* Modal Body */}
             <div className="p-4 sm:p-6 space-y-4">
-              {!isLoaded ? (
-                <div className="py-12 flex flex-col items-center justify-center gap-3 text-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
-                  <p className="text-xs font-mono text-[var(--muted)]">
-                    Loading authentication session...
-                  </p>
-                </div>
+              {!isLoaded && isClerkEnabled ? (
+                clerkLoadTimedOut ? (
+                  <div className="w-full p-5 rounded-[var(--r-in)] bg-[var(--paper-2)] border border-[var(--line)] space-y-3 text-left">
+                    <div className="flex items-center gap-2 text-xs font-mono font-bold text-[var(--bad)]">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>Authentication Service Unavailable</span>
+                    </div>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                      Clerk could not initialize on this domain. If you just deployed to Vercel, confirm{' '}
+                      <code className="font-mono text-[var(--ink)]">VITE_CLERK_PUBLISHABLE_KEY</code>{' '}
+                      matches your deployment environment and that your Vercel domain is allowed in your Clerk Dashboard.
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClerkLoadTimedOut(false);
+                          setWidgetRetryKey((k) => k + 1);
+                        }}
+                        className="min-h-[38px] px-3.5 py-1.5 rounded-[var(--r-in)] bg-[var(--ink)] text-[var(--on-ink)] hover:bg-[var(--accent-solid)] hover:text-white font-mono text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Retry</span>
+                      </button>
+                      {onNavigateToProfile && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onNavigateToProfile();
+                          }}
+                          className="min-h-[38px] px-3.5 py-1.5 rounded-[var(--r-in)] border border-[var(--line)] bg-[var(--paper-card)] hover:bg-[var(--paper)] text-[var(--ink)] font-mono text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <Heart className="w-3.5 h-3.5 text-[var(--accent)]" />
+                          <span>Open Guest Wishlist</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 flex flex-col items-center justify-center gap-3 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
+                    <p className="text-xs font-mono text-[var(--muted)]">
+                      Loading authentication session...
+                    </p>
+                  </div>
+                )
               ) : isSignedIn && user ? (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
@@ -329,7 +381,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Seamless Animated Switch with Preserved Email & Error Boundary */}
+                  {/* Clean Switch with Preserved Email & Error Boundary (virtual routing avoids hash conflicts) */}
                   <div
                     onInputCapture={handleEmailInputCapture}
                     className="flex justify-center w-full py-1"
@@ -338,38 +390,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       key={`${authTab}-${widgetRetryKey}`}
                       onRetry={() => setWidgetRetryKey((k) => k + 1)}
                     >
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={authTab}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
-                          transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-                          className="w-full flex justify-center"
-                        >
-                          {authTab === 'signin' ? (
-                            <SafeSignIn
-                              key={`signin-${theme}`}
-                              routing="hash"
-                              signUpUrl="#signup"
-                              initialValues={
-                                preservedEmail ? { emailAddress: preservedEmail } : undefined
-                              }
-                              appearance={clerkAppearance}
-                            />
-                          ) : (
-                            <SafeSignUp
-                              key={`signup-${theme}`}
-                              routing="hash"
-                              signInUrl="#signin"
-                              initialValues={
-                                preservedEmail ? { emailAddress: preservedEmail } : undefined
-                              }
-                              appearance={clerkAppearance}
-                            />
-                          )}
-                        </motion.div>
-                      </AnimatePresence>
+                      <div className="w-full flex justify-center">
+                        {authTab === 'signin' ? (
+                          <SafeSignIn
+                            key={`signin-${theme}-${widgetRetryKey}`}
+                            routing="virtual"
+                            initialValues={
+                              preservedEmail ? { emailAddress: preservedEmail } : undefined
+                            }
+                            appearance={clerkAppearance}
+                          />
+                        ) : (
+                          <SafeSignUp
+                            key={`signup-${theme}-${widgetRetryKey}`}
+                            routing="virtual"
+                            initialValues={
+                              preservedEmail ? { emailAddress: preservedEmail } : undefined
+                            }
+                            appearance={clerkAppearance}
+                          />
+                        )}
+                      </div>
                     </AuthWidgetErrorBoundary>
                   </div>
 
