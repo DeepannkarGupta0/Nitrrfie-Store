@@ -4,14 +4,14 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/index.ts": {
+    "api/index.mjs": {
       "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index?__path=$1"
+      "destination": "/api/index.mjs?__path=$1"
     },
     {
       "source": "/((?!api/|assets/|images/|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
