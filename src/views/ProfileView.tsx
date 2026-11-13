@@ -352,7 +352,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {ordersError && (
             <div className="p-3.5 rounded-[var(--r-in)] bg-[var(--bad-soft)] border border-[var(--bad-border)] text-xs text-[var(--bad)] flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{ordersError}</span>
+              <span>
+                {typeof ordersError === 'string'
+                  ? ordersError
+                  : 'Unable to load your order history right now.'}
+              </span>
             </div>
           )}
 
