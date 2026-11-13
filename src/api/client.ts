@@ -16,6 +16,31 @@ function isJsonContentType(res: Response): boolean {
   return contentType.toLowerCase().includes('application/json');
 }
 
+export function extractApiErrorMessage(payload: unknown, fallback: string): string {
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload.trim();
+  }
+  if (payload && typeof payload === 'object') {
+    const obj = payload as Record<string, unknown>;
+    if (typeof obj.message === 'string' && obj.message.trim()) {
+      return obj.message.trim();
+    }
+    if (typeof obj.error === 'string' && obj.error.trim()) {
+      return obj.error.trim();
+    }
+    if (obj.error && typeof obj.error === 'object') {
+      const nested = obj.error as Record<string, unknown>;
+      if (typeof nested.message === 'string' && nested.message.trim()) {
+        return nested.message.trim();
+      }
+      if (typeof nested.code === 'string' && nested.code.trim()) {
+        return `${fallback} (${nested.code.trim()})`;
+      }
+    }
+  }
+  return fallback;
+}
+
 function buildHeaders(
   token?: string | null,
   _userEmail?: string,
@@ -58,8 +83,8 @@ export async function apiProcessOrder(
       const err = await res.json().catch(() => ({ error: `Server returned status ${res.status}` }));
       return {
         success: false,
-        error: err.error || 'Failed to process order on server.',
-        code: err.code,
+        error: extractApiErrorMessage(err, 'Failed to process order on server.'),
+        code: typeof err?.code === 'string' ? err.code : undefined,
         status: res.status,
       };
     }
@@ -74,7 +99,7 @@ export async function apiProcessOrder(
   } catch (err: any) {
     return {
       success: false,
-      error: err?.message || 'Network error communicating with order server.',
+      error: extractApiErrorMessage(err, 'Network error communicating with order server.'),
       code: 'NETWORK_ERROR',
     };
   }
@@ -92,13 +117,20 @@ export async function apiFetchOrders(
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-      return { success: false, error: err.error || 'Failed to fetch orders.', status: res.status };
+      return {
+        success: false,
+        error: extractApiErrorMessage(err, 'Failed to fetch orders.'),
+        status: res.status,
+      };
     }
 
     const data = await res.json();
     return { success: true, orders: data.orders };
   } catch (err: any) {
-    return { success: false, error: err?.message || 'Network error fetching admin orders.' };
+    return {
+      success: false,
+      error: extractApiErrorMessage(err, 'Network error fetching admin orders.'),
+    };
   }
 }
 
@@ -119,14 +151,20 @@ export async function apiFetchMyOrders(
     if (!res.ok) {
       return {
         success: false,
-        error: data?.error || `Failed to load your order history (status ${res.status}).`,
+        error: extractApiErrorMessage(
+          data,
+          `Failed to load your order history (status ${res.status}).`
+        ),
         status: res.status,
       };
     }
 
     return { success: true, orders: Array.isArray(data.orders) ? data.orders : [] };
   } catch (err: any) {
-    return { success: false, error: err?.message || 'Network error fetching your order history.' };
+    return {
+      success: false,
+      error: extractApiErrorMessage(err, 'Network error fetching your order history.'),
+    };
   }
 }
 
@@ -146,9 +184,10 @@ export async function apiTrackOrder(query: string): Promise<{
       return {
         success: false,
         status: res.status,
-        error:
-          data?.error ||
-          'No matching order found. Please verify your Order ID, Roll Number, or Phone.',
+        error: extractApiErrorMessage(
+          data,
+          'No matching order found. Please verify your Order ID, Roll Number, or Phone.'
+        ),
       };
     }
     return { success: true, order: data.order };
@@ -184,16 +223,16 @@ export async function apiValidateCoupon(
       return {
         valid: false,
         discount: 0,
-        message: data?.error || 'Unable to validate coupon right now.',
+        message: extractApiErrorMessage(data, 'Unable to validate coupon right now.'),
       };
     }
     return {
       valid: Boolean(data.valid),
       discount: Number(data.discount ?? data.discountAmount) || 0,
-      message:
-        data.message ||
-        data.error ||
-        (data.valid ? 'Coupon applied.' : 'Invalid coupon code.'),
+      message: extractApiErrorMessage(
+        data,
+        data.valid ? 'Coupon applied.' : 'Invalid coupon code.'
+      ),
       coupon: data.coupon,
     };
   } catch {
@@ -220,13 +259,21 @@ export async function apiFetchAdminMe(
       method: 'GET',
       headers: buildHeaders(token, userEmail),
     });
+    if (!isJsonContentType(res)) {
+      return {
+        success: false,
+        authorized: false,
+        status: res.status,
+        error: `Admin verification endpoint returned unexpected response (status ${res.status}).`,
+      };
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return {
         success: false,
         authorized: false,
         status: res.status,
-        error: data?.error || `Verification failed (status ${res.status}).`,
+        error: extractApiErrorMessage(data, `Verification failed (status ${res.status}).`),
       };
     }
     return {
@@ -238,7 +285,7 @@ export async function apiFetchAdminMe(
     return {
       success: false,
       authorized: false,
-      error: err?.message || 'Network error checking staff authorization.',
+      error: extractApiErrorMessage(err, 'Network error checking staff authorization.'),
     };
   }
 }
@@ -278,7 +325,10 @@ export async function apiFetchAdminDashboard(
       return {
         success: false,
         status: res.status,
-        error: data?.error || `Failed to load centralized dashboard (status ${res.status}).`,
+        error: extractApiErrorMessage(
+          data,
+          `Failed to load centralized dashboard (status ${res.status}).`
+        ),
       };
     }
 
@@ -290,7 +340,7 @@ export async function apiFetchAdminDashboard(
   } catch (err: any) {
     return {
       success: false,
-      error: err?.message || 'Network error syncing centralized dashboard.',
+      error: extractApiErrorMessage(err, 'Network error syncing centralized dashboard.'),
     };
   }
 }
@@ -804,10 +854,10 @@ export async function apiSubscribeNewsletter(email: string): Promise<{
       return {
         success: false,
         code: typeof data?.code === 'string' ? data.code : 'SUBSCRIPTION_FAILED',
-        error:
-          (typeof data?.message === 'string' && data.message) ||
-          (typeof data?.error === 'string' && data.error) ||
-          'Unable to complete your subscription right now. Please try again.',
+        error: extractApiErrorMessage(
+          data,
+          'Unable to complete your subscription right now. Please try again.'
+        ),
       };
     }
 
@@ -1025,7 +1075,7 @@ export async function apiSubmitSupportInquiry(payload: {
     if (!res.ok || data?.success !== true) {
       return {
         success: false,
-        error: data?.error || `Unable to submit inquiry (status ${res.status}).`,
+        error: extractApiErrorMessage(data, `Unable to submit inquiry (status ${res.status}).`),
       };
     }
 
@@ -1066,7 +1116,7 @@ export async function apiFetchSupportInquiries(token?: string | null): Promise<{
     if (!res.ok || data?.success !== true) {
       return {
         success: false,
-        error: data?.error || `Failed to load bulk inquiries (status ${res.status}).`,
+        error: extractApiErrorMessage(data, `Failed to load bulk inquiries (status ${res.status}).`),
       };
     }
     return { success: true, inquiries: Array.isArray(data.inquiries) ? data.inquiries : [] };
