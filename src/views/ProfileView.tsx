@@ -67,7 +67,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
     setOrdersLoading(true);
     setOrdersError(null);
-    const token = await getToken();
+    let token = await getToken();
+    if (!token) {
+      await new Promise((r) => setTimeout(r, 450));
+      token = await getToken();
+    }
     if (!token) {
       setOrdersLoading(false);
       setOrdersError('Authentication token unavailable. Please refresh or sign in again.');
