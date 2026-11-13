@@ -1,4 +1,5 @@
 import type { CartItem, CustomDesign, HydratedCartPayload, Product } from '../types/store';
+import { extractApiErrorMessage } from './client';
 
 export interface CartApiResponse extends HydratedCartPayload {
   success?: boolean;
@@ -65,6 +66,9 @@ async function cartFetch(
   }
 
   const data = await res.json().catch(() => ({}));
+  if (!res.ok && data && typeof data === 'object' && typeof data.error !== 'string') {
+    data.error = extractApiErrorMessage(data, `Store API returned status ${res.status}.`);
+  }
   return { ok: res.ok, status: res.status, data };
 }
 
@@ -163,7 +167,7 @@ export async function apiFetchCatalogProducts(): Promise<{
     if (!res.ok) {
       return {
         ok: false,
-        error: data?.error || `Catalog service returned status ${res.status}.`,
+        error: extractApiErrorMessage(data, `Catalog service returned status ${res.status}.`),
       };
     }
     if (Array.isArray(data?.products)) {
