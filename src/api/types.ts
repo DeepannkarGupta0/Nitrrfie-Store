@@ -5,6 +5,7 @@ export interface ApiRequest extends IncomingMessage {
   body: any;
   query: Record<string, string | string[]>;
   method?: string;
+  originalUrl?: string;
   headers: Record<string, string | string[] | undefined>;
 }
 
