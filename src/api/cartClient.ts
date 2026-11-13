@@ -53,6 +53,17 @@ async function cartFetch(
     headers,
   });
 
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.includes('application/json')) {
+    return {
+      ok: false,
+      status: res.status,
+      data: {
+        error: `Store API returned unexpected response (status ${res.status}).`,
+      },
+    };
+  }
+
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }
@@ -141,6 +152,13 @@ export async function apiFetchCatalogProducts(): Promise<{
 }> {
   try {
     const res = await fetch('/api/products', { method: 'GET' });
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+      return {
+        ok: false,
+        error: `Catalog endpoint returned unexpected response (status ${res.status}).`,
+      };
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return {
