@@ -1,0 +1,10 @@
+# Robots.txt for NIT Raipur Official Store
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /checkout
+Disallow: /cart
+Disallow: /profile
+Disallow: /api/
+
+Sitemap: /sitemap.xml
