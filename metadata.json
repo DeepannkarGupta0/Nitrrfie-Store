@@ -1,0 +1,8 @@
+{
+  "name": "NITRRFIE Store Official",
+  "description": "Official campus merchandise store of National Institute of Technology Raipur (NITRRFIE). Premium varsity hoodies, oversized collegiate tees, club drops, and campus accessories.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
