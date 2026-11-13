@@ -11,6 +11,9 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "@clerk/backend": "^3.28.0",
     "@clerk/clerk-react": "^5.61.12",
