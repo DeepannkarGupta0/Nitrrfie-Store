@@ -1,7 +1,8 @@
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { PRODUCTS } from '../data/products.ts';
 import { INITIAL_COUPONS } from '../data/coupons.ts';
 import { getRoleTitleForRole } from '../config/clerk.ts';
@@ -339,9 +340,25 @@ export function seedAdminFoundationIfEmpty(db: DatabaseSync) {
   `).run(now);
 }
 
+function loadDatabaseSyncConstructor(): typeof DatabaseSync {
+  try {
+    const req = createRequire(import.meta.url);
+    const mod = req('node:sqlite') as { DatabaseSync?: typeof DatabaseSync };
+    if (!mod?.DatabaseSync) {
+      throw new Error('DatabaseSync export is missing from node:sqlite.');
+    }
+    return mod.DatabaseSync;
+  } catch (err: any) {
+    throw new Error(
+      `SQLite runtime unavailable (${err?.message || 'node:sqlite not supported'}). Ensure Node.js 22.x is selected in Vercel Project Settings -> General -> Node.js Version.`
+    );
+  }
+}
+
 export function createStoreDatabase(dbPath: string): DatabaseSync {
+  const DatabaseSyncCtor = loadDatabaseSyncConstructor();
   ensureDirectoryForFile(dbPath);
-  const db = new DatabaseSync(dbPath);
+  const db = new DatabaseSyncCtor(dbPath);
   initializeSchema(db);
   seedCatalogIfEmpty(db);
   seedAdminFoundationIfEmpty(db);
