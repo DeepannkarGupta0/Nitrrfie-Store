@@ -106,9 +106,36 @@ export const SafeSignedOut: React.FC<{ children: React.ReactNode }> = ({ childre
   return <SignedOut>{children}</SignedOut>;
 };
 
+class ClerkUserButtonBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('Clerk UserButton render fallback:', error?.message);
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 export const SafeUserButton: React.FC<React.ComponentProps<typeof UserButton>> = (props) => {
   if (!IS_CLERK_CONFIGURED) return null;
-  return <UserButton {...props} />;
+  return (
+    <ClerkUserButtonBoundary>
+      <UserButton {...props} />
+    </ClerkUserButtonBoundary>
+  );
 };
 
 const ClerkUnavailableNotice: React.FC<{ mode: 'signin' | 'signup' }> = ({ mode }) => {
