@@ -52,8 +52,13 @@ function handleCatalogEventsStream(req: ApiRequest, res: ApiResponse) {
   }
 
   res.write(
-    `event: connected\ndata: ${JSON.stringify({ updatedAt: new Date().toISOString() })}\n\n`
+    `retry: 30000\nevent: connected\ndata: ${JSON.stringify({ updatedAt: new Date().toISOString() })}\n\n`
   );
+
+  if (process.env.VERCEL === '1') {
+    res.end();
+    return;
+  }
 
   const unsubscribe = subscribeToCatalogEvents((event) => {
     try {
