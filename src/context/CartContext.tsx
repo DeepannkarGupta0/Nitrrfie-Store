@@ -368,12 +368,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isDisposed = false;
     let eventSource: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let sseRetryCount = 0;
 
     const connectCatalogSse = () => {
       if (isDisposed || typeof EventSource === 'undefined') return;
       try {
         eventSource = new EventSource('/api/products/events');
+        eventSource.addEventListener('connected', () => {
+          sseRetryCount = 0;
+        });
         eventSource.addEventListener('catalog_updated', () => {
+          sseRetryCount = 0;
           void refreshCatalogProducts();
         });
         eventSource.onerror = () => {
@@ -382,10 +387,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             eventSource = null;
           }
           if (!isDisposed && !reconnectTimer) {
+            sseRetryCount += 1;
+            const delay = Math.min(60000, 10000 * Math.pow(2, Math.min(3, sseRetryCount - 1)));
             reconnectTimer = setTimeout(() => {
               reconnectTimer = null;
               connectCatalogSse();
-            }, 8000);
+            }, delay);
           }
         };
       } catch {
@@ -554,6 +561,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isDisposed = false;
     let eventSource: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let adminSseRetryCount = 0;
 
     const connectAdminSse = async () => {
       if (isDisposed) return;
@@ -564,7 +572,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const streamUrl = `/api/admin/events?token=${encodeURIComponent(token)}`;
 
         eventSource = new EventSource(streamUrl);
+        eventSource.addEventListener('connected', () => {
+          adminSseRetryCount = 0;
+        });
         eventSource.addEventListener('admin_updated', (evt: MessageEvent) => {
+          adminSseRetryCount = 0;
           try {
             const payload = JSON.parse(evt.data);
             if (
@@ -586,10 +598,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             eventSource = null;
           }
           if (!isDisposed && !reconnectTimer) {
+            adminSseRetryCount += 1;
+            const delay = Math.min(60000, 10000 * Math.pow(2, Math.min(3, adminSseRetryCount - 1)));
             reconnectTimer = setTimeout(() => {
               reconnectTimer = null;
               void connectAdminSse();
-            }, 6000);
+            }, delay);
           }
         };
       } catch {
@@ -766,6 +780,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isDisposed = false;
     let eventSource: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cartSseRetryCount = 0;
 
     const connectSse = async () => {
       if (isDisposed || authUserIdRef.current !== authUserId) return;
@@ -774,7 +789,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!token || isDisposed || authUserIdRef.current !== authUserId) return;
 
         eventSource = new EventSource(`/api/cart/events?token=${encodeURIComponent(token)}`);
+        eventSource.addEventListener('connected', () => {
+          cartSseRetryCount = 0;
+        });
         eventSource.addEventListener('cart_updated', (evt: MessageEvent) => {
+          cartSseRetryCount = 0;
           try {
             const payload = JSON.parse(evt.data);
             if (payload?.sourceClientId && payload.sourceClientId === CLIENT_INSTANCE_ID) {
@@ -795,10 +814,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             eventSource = null;
           }
           if (!isDisposed && !reconnectTimer) {
+            cartSseRetryCount += 1;
+            const delay = Math.min(60000, 10000 * Math.pow(2, Math.min(3, cartSseRetryCount - 1)));
             reconnectTimer = setTimeout(() => {
               reconnectTimer = null;
               void connectSse();
-            }, 6000);
+            }, delay);
           }
         };
       } catch {
