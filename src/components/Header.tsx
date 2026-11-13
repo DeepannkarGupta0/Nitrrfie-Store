@@ -631,15 +631,6 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onOpenA
                           onClick={() => handleNav({ type: 'profile', section: 'wishlist' })}
                         />
                       </UserButton.MenuItems>
-                      <UserButton.UserProfilePage
-                        label="Wishlist"
-                        url="wishlist"
-                        labelIcon={<Heart className="w-4 h-4" />}
-                      >
-                        <div className="p-4 sm:p-6">
-                          <WishlistSection compact onNavigate={handleNav} />
-                        </div>
-                      </UserButton.UserProfilePage>
                     </SafeUserButton>
                     <div className="min-w-0">
                       <span className="text-[11px] text-[var(--muted)] block">Signed in</span>
