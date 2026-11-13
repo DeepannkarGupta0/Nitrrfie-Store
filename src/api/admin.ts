@@ -58,12 +58,17 @@ async function handleAdminEventsStream(req: ApiRequest, res: ApiResponse) {
   const meta = getAdminMeta(db);
 
   res.write(
-    `event: connected\ndata: ${JSON.stringify({
+    `retry: 30000\nevent: connected\ndata: ${JSON.stringify({
       version: meta.version,
       updatedAt: meta.updatedAt,
       officerEmail: auth.identity?.email,
     })}\n\n`
   );
+
+  if (process.env.VERCEL === '1') {
+    res.end();
+    return;
+  }
 
   const unsubscribe = subscribeToAdminEvents((event) => {
     try {
