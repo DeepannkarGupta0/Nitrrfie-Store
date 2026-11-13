@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+dist/
+build/
+out/
+.next/
+.vercel/
+
+# Environment Variables & Secrets (CRITICAL: Never commit to Git)
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Service Accounts, Credentials & Private Keys
+credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+
+# Local Caches & Diagnostics
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+.turbo/
+
+# System and OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Coverage and Testing
+coverage/
+.nyc_output/
+
+# IDE & Editor Local Config
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local Database Storage
+data/
+
