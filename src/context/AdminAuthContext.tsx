@@ -19,6 +19,7 @@ interface AdminAuthContextType {
   isLoaded: boolean;
   isCheckingAuth: boolean;
   isStaffAuthorized: boolean;
+  adminAuthError: string | null;
   adminUser: AdminUser | null;
   staffRoster: StaffMember[];
   setStaffRosterFromServer: (roster: StaffMember[]) => void;
@@ -51,6 +52,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   } = useSafeClerkAuth();
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+  const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
   const [serverIdentity, setServerIdentity] = useState<AdminAuthResult['identity'] | null>(null);
   const [serverAuthorized, setServerAuthorized] = useState<boolean | null>(null);
   const [staffRoster, setStaffRoster] = useState<StaffMember[]>([]);
@@ -74,17 +76,20 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!isSignedIn || !user || !userEmail) {
       setServerAuthorized(false);
       setServerIdentity(null);
+      setAdminAuthError(null);
       setStaffRoster([]);
       setIsCheckingAuth(false);
       return;
     }
 
     setIsCheckingAuth(true);
+    setAdminAuthError(null);
     try {
       const token = await getToken();
       if (!token) {
         setServerAuthorized(false);
         setServerIdentity(null);
+        setAdminAuthError('Session token unavailable. Please refresh or sign in again.');
         setStaffRoster([]);
         return;
       }
@@ -93,14 +98,24 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (res.success && res.authorized) {
         setServerAuthorized(true);
         setServerIdentity(res.identity || null);
+        setAdminAuthError(null);
+      } else if (res.success && !res.authorized) {
+        setServerAuthorized(false);
+        setServerIdentity(null);
+        setAdminAuthError(null);
+        setStaffRoster([]);
       } else {
         setServerAuthorized(false);
         setServerIdentity(null);
+        setAdminAuthError(
+          res.error || 'Unable to reach the staff verification server endpoint.'
+        );
         setStaffRoster([]);
       }
-    } catch {
+    } catch (err: any) {
       setServerAuthorized(false);
       setServerIdentity(null);
+      setAdminAuthError(err?.message || 'Network error checking staff verification.');
       setStaffRoster([]);
     } finally {
       setIsCheckingAuth(false);
@@ -259,6 +274,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         isLoaded: clerkLoaded,
         isCheckingAuth,
         isStaffAuthorized,
+        adminAuthError,
         adminUser,
         staffRoster,
         setStaffRosterFromServer,
