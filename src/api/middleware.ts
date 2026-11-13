@@ -297,6 +297,9 @@ export function validateOrigin(req: ApiRequest, res: ApiResponse): boolean {
   addHost(process.env.APP_URL);
   addHost(process.env.APP_PUBLIC_URL);
   addHost(process.env.ALLOWED_ORIGINS);
+  addHost(process.env.VERCEL_URL);
+  addHost(process.env.VERCEL_BRANCH_URL);
+  addHost(process.env.VERCEL_PROJECT_PRODUCTION_URL);
 
   if (allowedHosts.size > 0 && !allowedHosts.has(originHost)) {
     console.warn('[Security] validateOrigin rejected request:', {
