@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { PRODUCTS } from '../data/products.ts';
@@ -19,8 +20,12 @@ function ensureDirectoryForFile(filePath: string) {
 }
 
 export function initializeSchema(db: DatabaseSync) {
+  try {
+    db.exec(`PRAGMA journal_mode = WAL;`);
+  } catch {
+    // Fallback to default journal mode on filesystems that restrict WAL sidecars
+  }
   db.exec(`
-    PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 5000;
 
@@ -343,9 +348,31 @@ export function createStoreDatabase(dbPath: string): DatabaseSync {
   return db;
 }
 
-export function getStoreDatabase(): DatabaseSync {
+function resolveWritableDbPath(): string {
+  const configured = process.env.STORE_DB_PATH?.trim();
+  if (configured) return configured;
+
+  const isServerlessReadOnly =
+    process.env.VERCEL === '1' ||
+    Boolean(process.env.VERCEL_ENV) ||
+    Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+  if (isServerlessReadOnly) {
+    return path.join(os.tmpdir(), 'nitrr-store.db');
+  }
+
   const defaultPath = path.join(process.cwd(), 'data', 'store.db');
-  const targetPath = process.env.STORE_DB_PATH?.trim() || defaultPath;
+  try {
+    ensureDirectoryForFile(defaultPath);
+    fs.accessSync(path.dirname(defaultPath), fs.constants.W_OK);
+    return defaultPath;
+  } catch {
+    return path.join(os.tmpdir(), 'nitrr-store.db');
+  }
+}
+
+export function getStoreDatabase(): DatabaseSync {
+  const targetPath = resolveWritableDbPath();
 
   if (singletonDb && singletonDbPath === targetPath) {
     return singletonDb;
