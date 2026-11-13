@@ -23,7 +23,8 @@ interface AdminLoginGateProps {
 export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({ onNavigate }) => {
   const { theme } = useTheme();
   const { isSignedIn, user } = useSafeClerkAuth();
-  const { isStaffAuthorized, isCheckingAuth, logout } = useAdminAuth();
+  const { isStaffAuthorized, isCheckingAuth, adminAuthError, refreshAdminAuth, logout } =
+    useAdminAuth();
 
   const currentUserEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase().trim() || '';
 
@@ -88,7 +89,7 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({ onNavigate }) =>
                 <div className="flex justify-center w-full py-2">
                   <SafeSignIn
                     key={theme}
-                    routing="hash"
+                    routing="virtual"
                     appearance={getClerkAppearance(theme, 'ink')}
                   />
                 </div>
@@ -114,17 +115,38 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({ onNavigate }) =>
               </div>
             )}
 
-            {/* Case 2: Signed In, but NOT authorized as staff */}
+            {/* Case 2: Signed In, but NOT authorized or backend verification failed */}
             {isSignedIn && !isCheckingAuth && !isStaffAuthorized && (
               <div className="space-y-5">
                 <div className="p-4 rounded-[var(--r-in)] bg-[var(--bad-soft)] border border-[var(--bad-border)] text-xs space-y-2">
                   <div className="flex items-center gap-2 text-[var(--bad)] font-mono font-bold">
                     <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>Staff Authorization Shield Active</span>
+                    <span>
+                      {adminAuthError
+                        ? 'Staff Verification Service Error'
+                        : 'Staff Authorization Shield Active'}
+                    </span>
                   </div>
                   <p className="text-[var(--ink-2)] leading-relaxed">
-                    You are signed in as <strong className="font-mono text-[var(--ink)]">{currentUserEmail}</strong> ({user?.fullName || 'Customer'}). However, this account has not been assigned administrative staff privileges.
+                    {adminAuthError ? (
+                      <>
+                        Signed in as <strong className="font-mono text-[var(--ink)]">{currentUserEmail}</strong>, but the server could not complete staff clearance verification: <span className="font-mono text-[var(--ink)]">{adminAuthError}</span>
+                      </>
+                    ) : (
+                      <>
+                        You are signed in as <strong className="font-mono text-[var(--ink)]">{currentUserEmail}</strong> ({user?.fullName || 'Customer'}). However, this account has not been assigned administrative staff privileges.
+                      </>
+                    )}
                   </p>
+                  {adminAuthError && (
+                    <button
+                      type="button"
+                      onClick={() => void refreshAdminAuth()}
+                      className="mt-1 px-3 py-1.5 rounded-[var(--r-sm)] bg-[var(--paper)] border border-[var(--line-2)] text-[var(--ink)] font-mono font-semibold cursor-pointer hover:bg-[var(--paper-2)]"
+                    >
+                      Retry Verification
+                    </button>
+                  )}
                 </div>
 
                 <div className="p-4 bg-[var(--paper-2)] rounded-[var(--r-in)] border border-[var(--line)] text-xs text-[var(--muted)] space-y-2 font-mono">
