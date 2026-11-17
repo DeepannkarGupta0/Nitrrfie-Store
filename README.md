@@ -1,7 +1,7 @@
 # ✦ Unwearable ✦
 
 > **A Brutalist-designed, serverless e-commerce platform with a built-in Custom Design Builder.** 
-> Built with Next.js (App Router), Supabase, Clerk, Razorpay, and Qikink print-on-demand fulfillment.
+> Built with Next.js (App Router), Supabase, Clerk, manual UPI verification, and manual store fulfillment print-on-demand fulfillment.
 
 ---
 
@@ -9,7 +9,7 @@
 
 **Unwearable** is a next-generation streetwear e-commerce platform that combines a high-contrast **Brutalist UI** aesthetic with a state-of-the-art **Design Builder** for apparel customization. 
 
-Designed for extreme scalability and zero maintenance, it relies entirely on a modern serverless stack. From secure webhook handling for Razorpay to asynchronous background fulfillment via the Qikink API, the architecture ensures orders flow seamlessly from checkout to printing without manual intervention.
+Designed for extreme scalability and zero maintenance, it relies entirely on a modern serverless stack. From secure webhook handling for manual UPI verification to asynchronous background fulfillment via the manual store fulfillment API, the architecture ensures orders flow seamlessly from checkout to printing without manual intervention.
 
 ---
 
@@ -19,8 +19,8 @@ Designed for extreme scalability and zero maintenance, it relies entirely on a m
 - **Custom Design Builder**: An interactive 4-step HTML5 Canvas builder allowing users to overlay text and graphics onto apparel in real-time.
 - **Serverless Architecture**: Built entirely on Next.js Route Handlers utilizing Vercel's Edge and Serverless functions.
 - **Secure Authentication**: Passwordless and secure email magic-link auth powered by Clerk.
-- **Automated Dropshipping**: Asynchronous integration with the Qikink API for hands-off print-on-demand fulfillment.
-- **Robust Payment Pipeline**: Secure Razorpay integration with strictly verified webhooks.
+- **Automated Dropshipping**: Asynchronous integration with the manual store fulfillment API for hands-off print-on-demand fulfillment.
+- **Robust Payment Pipeline**: Secure manual UPI verification integration with strictly verified webhooks.
 - **Row Level Security (RLS)**: Data privacy strictly enforced at the database level via Supabase PostgreSQL.
 
 ---
@@ -59,8 +59,8 @@ For deep dives into specific parts of the system, please refer to the extensive 
 | **Authentication** | Clerk |
 | **Database** | Supabase (PostgreSQL) |
 | **Styling** | Tailwind CSS v4 |
-| **Payments** | Razorpay |
-| **Fulfillment** | Qikink REST API |
+| **Payments** | manual UPI verification |
+| **Fulfillment** | manual store fulfillment REST API |
 
 ---
 
@@ -109,28 +109,22 @@ The platform will be available at `http://localhost:3000`.
 Create a `.env.local` file in the root directory. **Never commit this file.**
 
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-# Clerk Auth
+# Copy values from .env.example and fill in your own credentials.
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
-
-# Razorpay
-NEXT_PUBLIC_RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-RAZORPAY_WEBHOOK_SECRET=
-
-# Qikink
-QIKINK_API_URL=
-QIKINK_CLIENT_ID=
-QIKINK_CLIENT_SECRET=
-
-# Internal
-INTERNAL_API_KEY=
-ADMIN_EMAIL=
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ADMIN_ROLE=admin
+STORE_UPI_ID=
+STORE_WHATSAPP=
+STORE_PHONE=
+ENABLE_DESIGN_BUILDER=true
+ENABLE_PAYMENTS=false
 ```
 
 ---
@@ -160,3 +154,17 @@ The platform is continuously evolving. Our immediate roadmap includes:
 ## 📄 License
 
 This project is licensed under the [MIT License](./LICENSE).
+
+
+## Recent store operations update
+
+- For a fresh database, run all SQL files in `supabase/migrations` in chronological order. For an existing database, run only the new `202611110001` and `202611110002` migrations. Initial stock is zero; update quantities in Admin → Inventory.
+- Configure Clerk email verification by code, password sign-in, username as a sign-in identifier, Google OAuth, and phone-number verification by SMS. See [Admin and account setup](./docs/admin-setup.md). Public signup always creates a regular customer; it never assigns admin privileges.
+- Create your first Clerk user normally, then run `BOOTSTRAP_ADMIN_EMAIL=you@example.com CLERK_SECRET_KEY=sk_... node scripts/bootstrap-admin.mjs` once to assign `super_admin`. Remove the bootstrap email secret afterwards.
+- A Super Admin can promote an existing registered user from Admin → Manage team.
+- Checkout records manual UPI payment claims as pending/unverified. The team must verify the bank credit and update the order status in Admin. A UTR or screenshot is not treated as proof of settlement.
+- Fulfillment is handled manually by the store team; no Razorpay or Qikink integration is included.
+
+
+## Admin governance migration
+Run `supabase/migrations/202611170002_admin_governance.sql` after the existing migrations to enable category edit/delete-to-Reserve and the Super Admin Recent Work audit tab.

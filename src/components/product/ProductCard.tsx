@@ -54,6 +54,9 @@ export default function ProductCard({ product }: ProductCardProps) {
         <p className="font-sans text-sm text-brutal-black/70 line-clamp-1">
           {product.tagline}
         </p>
+        <p className="font-mono text-[10px] tracking-wider text-brutal-black/50">
+          ITEM NO. {product.sku}
+        </p>
         <p className="font-mono text-xl font-bold text-accent">
           {formatPrice(product.price)}
         </p>

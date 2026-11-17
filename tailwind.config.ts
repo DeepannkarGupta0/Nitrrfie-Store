@@ -15,8 +15,9 @@ const config: Config = {
         toxic: "#00FF88",
       },
       fontFamily: {
-        mono: ["Space Mono", "monospace"],
-        sans: ["Inter", "sans-serif"],
+        mono: ["var(--font-space-mono)", "monospace"],
+        sans: ["var(--font-dm-sans)", "sans-serif"],
+        display: ["var(--font-barlow-condensed)", "sans-serif"],
       },
       boxShadow: {
         brutal: "4px 4px 0 #0A0A0A",

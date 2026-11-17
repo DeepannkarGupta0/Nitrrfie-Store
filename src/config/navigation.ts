@@ -14,11 +14,12 @@ export const mainNav: NavConfigItem[] = [
 ];
 
 // Links that appear only when the user is signed-in
+
 export const accountNav: NavConfigItem[] = [
-  { href: '/account', label: 'Account', requiresAuth: true, enabled: true }, 
+  { href: '/account', label: 'Account Settings', requiresAuth: true, enabled: true },
   { href: '/account/orders', label: 'My Orders', requiresAuth: true, enabled: true },
-  { href: '/account/profile', label: 'Profile', requiresAuth: true, enabled: true },
 ];
+
 
 // Admin-only links
 export const adminNav: NavConfigItem[] = [

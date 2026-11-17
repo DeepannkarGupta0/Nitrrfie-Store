@@ -17,7 +17,7 @@ The Custom Design Builder is currently embedded tightly into the main repository
 ## Phase 3: Analytics & Admin Dashboard Expansion
 - Implement tracking for popular products.
 - Create visual data representations (charts) in the `/admin` panel for daily revenue and order volume.
-- Build a dedicated UI for reviewing and retrying failed Qikink fulfillments directly from the browser instead of the database.
+- Build a dedicated UI for reviewing and retrying failed manual store fulfillment fulfillments directly from the browser instead of the database.
 
 ## Phase 4: Performance & SEO
 - Implement Redis caching (via Upstash) for product listings to reduce Supabase queries on the homepage.

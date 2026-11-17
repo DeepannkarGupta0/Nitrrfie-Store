@@ -6,10 +6,12 @@ import Link from "next/link";
 import { Search, ShoppingBag, Eye, Sparkles, Filter, CheckCircle2, SlidersHorizontal } from "lucide-react";
 import { netrifyProducts, type NetrifyProduct } from "@/data/netrifyProducts";
 import { useCart } from "@/context/CartContext";
+import { useInventory } from "@/context/InventoryContext";
 import QuickViewModal from "@/components/netrify/QuickViewModal";
 
 export default function ShopPage() {
   const { addItem } = useCart();
+  const inventory = useInventory();
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
@@ -177,6 +179,7 @@ export default function ShopPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {filteredProducts.map((product) => {
               const isAdded = addedId === product.id;
+              const outOfStock = inventory[product.id] !== undefined && inventory[product.id] <= 0;
               return (
                 <div
                   key={product.id}
@@ -193,6 +196,7 @@ export default function ShopPage() {
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
 
+                    {outOfStock && <span className="absolute bottom-3 left-3 z-10 rounded-md bg-red-600 px-2.5 py-1 text-[10px] font-black uppercase text-white">Out of stock</span>}
                     {/* Committee & Drop Tags */}
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
                       <span className="bg-slate-950/85 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md">
@@ -283,19 +287,16 @@ export default function ShopPage() {
                         <button
                           type="button"
                           onClick={(e) => handleQuickAdd(product, e)}
+                          disabled={isAdded || outOfStock}
                           className={`p-2.5 rounded-xl transition-all cursor-pointer ${
                             isAdded
                               ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 scale-105"
-                              : "bg-slate-100 text-slate-700 hover:bg-[#ff782e] hover:text-white"
+                              : outOfStock ? "bg-red-50 text-red-600 cursor-not-allowed" : "bg-slate-100 text-slate-700 hover:bg-[#ff782e] hover:text-white"
                           }`}
-                          title="Quick add size L to cart"
+                          title={outOfStock ? "Out of stock" : "Quick add size L to cart"}
                           aria-label="Add to cart"
                         >
-                          {isAdded ? (
-                            <CheckCircle2 className="w-4 h-4" />
-                          ) : (
-                            <ShoppingBag className="w-4 h-4" />
-                          )}
+                          {isAdded ? <CheckCircle2 className="w-4 h-4" /> : outOfStock ? <span className="text-[9px] font-black">OOS</span> : <ShoppingBag className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>

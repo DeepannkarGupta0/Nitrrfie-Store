@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { log } from "@/lib/logger";
+import { requireAuth } from "@/server/auth";
+import { currentUser } from "@clerk/nextjs/server";
+import { netrifyProducts } from "@/data/netrifyProducts";
 
 interface PlaceOrderBody {
   customer: {
@@ -35,9 +38,9 @@ interface PlaceOrderBody {
   paymentScreenshot?: string; // base64 data URL if uploaded
 }
 
-const STORE_WHATSAPP = "7974766166";
-const STORE_UPI_ID = "7974766166@axl";
-const STORE_PHONE = "7974766166";
+const STORE_WHATSAPP = process.env.STORE_WHATSAPP || "7974766166";
+const STORE_UPI_ID = process.env.STORE_UPI_ID || "7974766166@axl";
+const STORE_PHONE = process.env.STORE_PHONE || "7974766166";
 
 function generateOrderNumber(): string {
   const ts = Date.now().toString(36).toUpperCase();
@@ -93,10 +96,10 @@ function buildWhatsAppMessage({
       : "Campus Portico Desk Pickup";
 
   const lines = [
-    `🛍️ *NIT RAIPUR STORE - ORDER & PAYMENT VERIFICATION*`,
+    `🛍️ *NIT RAIPUR STORE - ORDER & PAYMENT REVIEW*`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━`,
     `📦 *Order ID:* ${orderNumber}`,
-    `💰 *Total Paid:* ₹${totalAmount.toLocaleString("en-IN")}`,
+    `💰 *Order Amount:* ₹${totalAmount.toLocaleString("en-IN")}`,
     `🏦 *UPI UTR / Ref ID:* ${upiUtr}`,
     `💳 *Paid To:* ${STORE_UPI_ID}`,
     ``,
@@ -117,7 +120,7 @@ function buildWhatsAppMessage({
       ? `📸 *Payment Proof Link:* ${screenshotUrl}`
       : `📸 *Payment Proof:* (Attached with this message)`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `_Please verify my UPI payment and confirm my order dispatch._`,
+    `_Please verify this UPI payment manually and confirm the order. This message is a payment claim, not proof of settlement._`,
   ];
 
   return lines.filter((l) => l !== null).join("\n");
@@ -125,8 +128,12 @@ function buildWhatsAppMessage({
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await requireAuth();
+    const account = await currentUser();
     const body: PlaceOrderBody = await request.json();
     const { customer, items, totalAmount, paymentMethod, upiUtr, paymentScreenshot } = body;
+    if (!customer) return NextResponse.json({ error: 'Customer details are required.' }, { status: 400 });
+    if (account?.primaryEmailAddress?.emailAddress) customer.email = account.primaryEmailAddress.emailAddress;
 
     // ── 1. Validate Customer & Cart ─────────────────────────────────────────
     if (!customer?.name?.trim()) {
@@ -142,15 +149,31 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!items || items.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Your bag is empty." }, { status: 400 });
     }
     if (!totalAmount || totalAmount < 1) {
       return NextResponse.json({ error: "Invalid order amount." }, { status: 400 });
     }
+    const invalidItem = items.find((item) => {
+      const product = netrifyProducts.find((candidate) => candidate.slug === item.slug);
+      return !product || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20 || item.price !== product.price;
+    });
+    if (invalidItem) return NextResponse.json({ error: `Invalid product, quantity or price for ${invalidItem.slug}. Refresh your cart and try again.` }, { status: 400 });
+    const trustedItems = items.map((item) => {
+      const product = netrifyProducts.find((candidate) => candidate.slug === item.slug)!;
+      return { ...item, id: product.id, name: product.name, price: product.price, image: product.image };
+    });
+    const calculatedTotal = trustedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (Math.round(totalAmount * 100) !== Math.round(calculatedTotal * 100)) {
+      return NextResponse.json({ error: "Cart total changed. Refresh your cart before placing the order." }, { status: 400 });
+    }
 
     // ── 2. Validate Delivery Address According to Delivery Type ────────────
     const deliveryType = customer.deliveryType || "pan_india";
+    if (!["pan_india", "campus_desk", "hostel_delivery"].includes(deliveryType)) {
+      return NextResponse.json({ error: "Invalid delivery method. Please select a valid delivery option." }, { status: 400 });
+    }
 
     if (deliveryType === "pan_india") {
       if (!customer.addressLine1?.trim()) {
@@ -197,14 +220,14 @@ export async function POST(request: NextRequest) {
     if (existingPayment) {
       return NextResponse.json(
         {
-          error: `This UPI Reference ID (${cleanUtr}) has already been recorded for order ${existingPayment.gateway_order_id}. If you made a new payment, please enter the corresponding UTR from your bank app.`,
+          error: `This UPI Reference ID (${cleanUtr}) has already been submitted for another order.`,
         },
         { status: 400 }
       );
     }
 
     const orderNumber = generateOrderNumber();
-    const totalInPaise = Math.round(totalAmount * 100);
+    const totalInPaise = Math.round(calculatedTotal * 100);
 
     // ── 4. Upload Payment Screenshot to Supabase Storage if Provided ────────
     let paymentScreenshotUrl: string | undefined = undefined;
@@ -242,13 +265,13 @@ export async function POST(request: NextRequest) {
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from("payments")
       .insert({
-        gateway: "upi_qr",
+        gateway: "manual_upi",
         gateway_order_id: orderNumber,
         gateway_payment_id: cleanUtr,
         amount: totalInPaise,
         currency: "INR",
-        status: "captured",
-        verified: true,
+        status: "created",
+        verified: false,
       })
       .select()
       .single();
@@ -344,8 +367,8 @@ export async function POST(request: NextRequest) {
       rollNumber: customer.rollNumber?.trim().toUpperCase(),
       deliveryType,
       deliveryLocation: shippingDetails.formatted_address,
-      items,
-      totalAmount,
+      items: trustedItems,
+      totalAmount: calculatedTotal,
       upiUtr: cleanUtr,
       screenshotUrl: paymentScreenshotUrl,
     });
@@ -357,18 +380,27 @@ export async function POST(request: NextRequest) {
     shippingDetails.whatsapp_message = formattedWhatsAppMessage;
     shippingDetails.whatsapp_url = whatsappUrl;
 
-    // ── 8. Record Order in Supabase ─────────────────────────────────────────
+    // ── 8. Reserve stock atomically for the pending order ───────────────────
+    const { error: reserveError } = await supabaseAdmin.rpc('reserve_inventory', {
+      p_items: trustedItems.map((item) => ({ product_id: item.id, quantity: item.quantity })),
+    });
+    if (reserveError) {
+      await supabaseAdmin.from('payments').delete().eq('id', payment.id);
+      return NextResponse.json({ error: 'One or more products are out of stock or the requested quantity is unavailable.' }, { status: 409 });
+    }
+
+    // ── 9. Record Order in Supabase ─────────────────────────────────────────
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .insert({
         order_number: orderNumber,
-        user_id: customer.rollNumber?.trim().toUpperCase() || cleanPhone,
-        status: "paid",
+        user_id: userId,
+        status: "pending",
         customer_name: customer.name.trim(),
         customer_email: customer.email.toLowerCase().trim(),
         customer_phone: customer.phone.trim(),
         shipping_address: shippingDetails,
-        items,
+        items: trustedItems,
         subtotal: totalInPaise,
         total_amount: totalInPaise,
         payment_id: payment.id,
@@ -377,6 +409,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (orderError) {
+      await supabaseAdmin.rpc('release_inventory', { p_items: trustedItems.map((item) => ({ product_id: item.id, quantity: item.quantity })) });
+      await supabaseAdmin.from('payments').delete().eq('id', payment.id);
       await log("order_place_order", `Order record insertion failed: ${orderError.message}`, {
         severity: "error",
         payload: { orderNumber },
@@ -389,13 +423,13 @@ export async function POST(request: NextRequest) {
       order_number: orderNumber,
       order_id: order.id,
       payment_id: payment.id,
-      total_amount: totalAmount,
+      total_amount: calculatedTotal,
       customer_name: customer.name.trim(),
       roll_number: customer.rollNumber?.trim().toUpperCase() || "",
       delivery_type: deliveryType,
       delivery_location: shippingDetails.formatted_address,
       shipping_address: shippingDetails,
-      payment_method: "upi_qr",
+      payment_method: "manual_upi",
       upi_utr: cleanUtr,
       payment_screenshot_url: paymentScreenshotUrl || null,
       whatsapp_message: formattedWhatsAppMessage,

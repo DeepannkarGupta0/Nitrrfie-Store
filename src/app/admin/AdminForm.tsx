@@ -81,7 +81,7 @@ export default function AdminForm() {
   return (
     <div className="px-4 py-8 max-w-4xl mx-auto">
       <h1 className="font-mono text-4xl md:text-5xl font-bold uppercase mb-2">Admin Panel</h1>
-      <p className="font-sans text-brutal-black/60 mb-6">Add products to the void</p>
+      <p className="font-sans text-brutal-black/60 mb-6">Manage store products</p>
 
       <div className="flex border-brutal border-3 mb-8 overflow-hidden">
         <div className="flex-1 px-6 py-3 font-mono text-sm uppercase bg-brutal-black text-cream border-r-brutal border-r-3">Products</div>
@@ -118,11 +118,11 @@ export default function AdminForm() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <BrutalInput placeholder="Slug (e.g., void-tee)" name="slug" value={formData.slug} onChange={handleInputChange} required />
-          <BrutalInput placeholder="Price (in dollars)" name="price" type="number" step="0.01" min="0" value={formData.price} onChange={handleInputChange} required />
+          <BrutalInput placeholder="Price (INR)" name="price" type="number" step="0.01" min="0" value={formData.price} onChange={handleInputChange} required />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <BrutalInput placeholder="Category (e.g., Tops)" name="category" value={formData.category} onChange={handleInputChange} required />
-          <BrutalInput placeholder="Qikink SKU" name="sku" value={formData.sku} onChange={handleInputChange} required />
+          <BrutalInput placeholder="Product SKU" name="sku" value={formData.sku} onChange={handleInputChange} required />
         </div>
         <div>
           <label className="font-mono text-sm uppercase mb-2 block">Product Image</label>

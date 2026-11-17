@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Eye, ShoppingBag, Check } from "lucide-react";
 import { NetrifyProduct, netrifyProducts } from "@/data/netrifyProducts";
 import { useCart } from "@/context/CartContext";
+import { useInventory } from "@/context/InventoryContext";
 
 interface FeaturedProductsProps {
   onQuickView: (product: NetrifyProduct) => void;
@@ -21,6 +22,7 @@ type FilterCategory =
 
 export default function FeaturedProducts({ onQuickView }: FeaturedProductsProps) {
   const { addItem } = useCart();
+  const inventory = useInventory();
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
   const [addedId, setAddedId] = useState<string | null>(null);
 
@@ -101,6 +103,8 @@ export default function FeaturedProducts({ onQuickView }: FeaturedProductsProps)
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {filteredProducts.map((product) => {
             const isAdded = addedId === product.id;
+            const quantity = inventory[product.id];
+            const outOfStock = quantity !== undefined && quantity <= 0;
             return (
               <div
                 key={product.id}
@@ -123,10 +127,9 @@ export default function FeaturedProducts({ onQuickView }: FeaturedProductsProps)
                       {product.clubShort}
                     </span>
                     {product.badge && (
-                      <span className="bg-[#ff782e] text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow-sm">
-                        {product.badge}
-                      </span>
+                      <span className="bg-[#ff782e] text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow-sm">{product.badge}</span>
                     )}
+                    {outOfStock && <span className="rounded bg-red-600 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white">Out of stock</span>}
                   </div>
 
                   {/* Quick View Hover Button */}
@@ -199,20 +202,16 @@ export default function FeaturedProducts({ onQuickView }: FeaturedProductsProps)
                     <button
                       type="button"
                       onClick={(e) => handleQuickAdd(product, e)}
-                      disabled={isAdded}
+                      disabled={isAdded || outOfStock}
                       className={`p-2.5 rounded-xl transition-all cursor-pointer ${
                         isAdded
                           ? "bg-emerald-500 text-white"
-                          : "bg-slate-100 text-slate-700 hover:bg-[#ff782e] hover:text-white"
+                          : outOfStock ? "bg-red-50 text-red-600 cursor-not-allowed" : "bg-slate-100 text-slate-700 hover:bg-[#ff782e] hover:text-white"
                       }`}
                       title="Quick add size L to cart"
                       aria-label="Add to cart"
                     >
-                      {isAdded ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <ShoppingBag className="w-4 h-4" />
-                      )}
+                      {isAdded ? <Check className="w-4 h-4" /> : outOfStock ? <span className="text-[9px] font-black">OOS</span> : <ShoppingBag className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>

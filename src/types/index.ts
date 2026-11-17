@@ -144,8 +144,6 @@ export interface Order {
   total_amount: number;
   payment_id?: string;
   payments?: Payment;         // joined via Supabase select
-  qikink_order_id?: string;
-  qikink_response?: Record<string, unknown>;
   retry_count: number;
   error_message?: string;
   created_at: string;

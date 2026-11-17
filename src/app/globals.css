@@ -5,8 +5,9 @@
   --color-brutal-black: #0A0A0A;
   --color-accent: #FF3E00;
   --color-toxic: #00FF88;
-  --font-mono: "Space Mono", monospace;
-  --font-sans: "Inter", sans-serif;
+  --font-mono: var(--font-space-mono), monospace;
+  --font-sans: var(--font-roboto), sans-serif;
+  --font-display: var(--font-playfair), serif;
   --shadow-brutal: 4px 4px 0 #0A0A0A;
   --shadow-brutal-lg: 8px 8px 0 #0A0A0A;
   --border-brutal: 3px;
@@ -128,6 +129,22 @@
 body {
   background-color: #F5F0E8;
   color: #0A0A0A;
-  font-family: "Inter", sans-serif;
-  letter-spacing: -0.02em;
+  font-family: var(--font-roboto), sans-serif;
+  line-height: 1.65;
+  letter-spacing: normal;
+}
+
+/* Editorial collegiate display type for page hierarchy. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-playfair), serif;
+  letter-spacing: normal;
+  line-height: 1.2;
+}
+
+.auth-heading {
+  font-family: var(--font-roboto), sans-serif !important;
+  letter-spacing: normal !important;
+  line-height: 1.4 !important;
 }

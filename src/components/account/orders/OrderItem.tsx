@@ -21,7 +21,7 @@ export const OrderItem: React.FC<OrderItemProps> = ({ item }) => {
         </div>
       )}
       <div className="flex-1">
-        <p className="font-mono text-sm font-bold">{item.name}</p>
+        <p className="font-sans text-sm font-semibold">{item.name}</p>
         <p className="font-sans text-xs text-brutal-black/60">
           Size: {item.selectedSize} · Qty: {item.quantity}
           {item.designId && <span className="ml-2 text-accent">✦ Custom Design</span>}

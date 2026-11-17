@@ -18,7 +18,7 @@ export default function DashboardSidebar() {
     >
       <button
         type="button"
-        className="md:hidden mb-4 font-mono text-sm uppercase border-brutal border-3 p-2"
+        className="md:hidden mb-4 font-sans text-sm font-semibold tracking-wide border-brutal border-3 p-2"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls="dashboard-sidebar-links"
@@ -35,7 +35,7 @@ export default function DashboardSidebar() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={`block font-mono text-sm uppercase py-2 px-3 border-brutal border-3 hover:bg-accent hover:text-cream transition-colors ${isActive ? "bg-accent text-cream" : "bg-cream text-brutal-black"}`}
+                className={`block font-sans text-sm font-semibold tracking-wide py-2 px-3 border-brutal border-3 hover:bg-accent hover:text-cream transition-colors ${isActive ? "bg-accent text-cream" : "bg-cream text-brutal-black"}`}
                 aria-current={isActive ? "page" : undefined}
               >
                 {item.label}

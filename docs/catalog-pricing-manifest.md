@@ -86,5 +86,5 @@ All raw assets from `C:\Users\Admin\Downloads\catalog` have been cataloged, insp
 
 ## 3. Implementation Rules
 1. **Currency Standard:** All displayed storefront prices strictly use Indian Rupees (`₹`), with zero decimal places for whole amounts (e.g. `₹599`).
-2. **Payment Unit:** Razorpay integration expects amounts in paise (`priceInRupees * 100`).
+2. **Payment Unit:** The order database stores amounts in paise (`priceInRupees * 100`).
 3. **Campus Logistics:** Direct pickup from NITRRFIE Innovation Center / Makerspace is free. Evening hostel delivery window is 7:00 PM – 9:00 PM.

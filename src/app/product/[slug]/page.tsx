@@ -18,12 +18,14 @@ import {
 } from "lucide-react";
 import { netrifyProducts, type NetrifyProduct } from "@/data/netrifyProducts";
 import { useCart } from "@/context/CartContext";
+import { useInventory } from "@/context/InventoryContext";
 
 export default function ProductDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
   const router = useRouter();
   const { addItem } = useCart();
+  const inventory = useInventory();
 
   // Find product by slug or fallback by legacy matching
   const product: NetrifyProduct | undefined = useMemo(() => {
@@ -50,11 +52,14 @@ export default function ProductDetailPage() {
     return notFound();
   }
 
+  const availableQuantity = inventory[product.id] ?? 20;
+  const outOfStock = availableQuantity <= 0;
   const relatedProducts = netrifyProducts
     .filter((p) => p.id !== product.id)
     .slice(0, 4);
 
   const handleAddToCart = () => {
+    if (outOfStock || quantity > availableQuantity) return;
     for (let i = 0; i < quantity; i++) {
       addItem({
         id: product.id,
@@ -198,9 +203,9 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-[#ff782e]">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${outOfStock ? "bg-red-100 text-red-700" : "bg-orange-100 text-[#ff782e]"}`}>
                 <Sparkles className="w-3.5 h-3.5" />
-                In Stock
+                {outOfStock ? "Out of Stock" : `${availableQuantity} In Stock`}
               </span>
             </div>
 
@@ -275,7 +280,8 @@ export default function ProductDetailPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(quantity + 1)}
+                    onClick={() => setQuantity(Math.min(availableQuantity, quantity + 1))}
+                    disabled={quantity >= availableQuantity || outOfStock}
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold"
                   >
                     +
@@ -285,13 +291,14 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={handleAddToCart}
+                  disabled={outOfStock || quantity > availableQuantity}
                   className={`flex-1 py-3.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg ${
                     added
                       ? "bg-emerald-600 text-white shadow-emerald-500/20"
-                      : "bg-slate-900 hover:bg-black text-white shadow-slate-900/10"
+                      : outOfStock ? "bg-red-100 text-red-700 cursor-not-allowed" : "bg-slate-900 hover:bg-black text-white shadow-slate-900/10"
                   }`}
                 >
-                  {added ? (
+                  {outOfStock ? <span>Out of Stock</span> : added ? (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Added To Cart!</span>
@@ -308,9 +315,10 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={handleInstantCheckout}
+                disabled={outOfStock || quantity > availableQuantity}
                 className="w-full py-3.5 rounded-2xl bg-[#ff782e] hover:bg-[#e05b12] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-[#ff782e]/25 hover:shadow-xl transition-all cursor-pointer"
               >
-                <span>Instant Order & Campus Handover</span>
+                <span>{outOfStock ? "Out of Stock" : "Instant Order & Campus Handover"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
