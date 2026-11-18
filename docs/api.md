@@ -1,53 +1,16 @@
-# Internal API Reference
+# API Reference
 
-This document outlines the core internal API endpoints used by the frontend and third-party webhooks.
+## Customer
 
-## 1. Webhooks
+- `POST /api/orders/place` — creates a manual-UPI order for the authenticated Clerk user. Prices are revalidated against the server product catalogue, stock is reserved atomically, and payment/order status remains pending until staff verifies the bank credit.
+- `GET /api/inventory` — public read-only stock quantities used by the storefront.
 
-### `POST /api/payment/webhook`
-Receives asynchronous payment updates from Razorpay.
-- **Security**: Validates the `x-razorpay-signature` header using `RAZORPAY_WEBHOOK_SECRET`.
-- **Payload**: Razorpay event object (`payment.captured`, `payment.failed`).
-- **Action**: Updates the database order status using `service_role` and triggers Qikink fulfillment via `waitUntil()`.
-- **Returns**: `200 OK` immediately upon signature validation.
+## Admin (Clerk role required)
 
-## 2. Order Management
+- `GET /api/admin/orders` — lists orders newest first.
+- `PATCH /api/admin/orders` — updates an order status. Marking an order `paid` verifies its linked manual payment record; cancelling an order releases reserved stock.
+- `PATCH /api/inventory` — updates an item quantity.
+- `GET /api/admin/team` — lists admins (Super Admin only).
+- `POST /api/admin/team` — promotes an existing verified Clerk user to `admin` (Super Admin only).
 
-### `POST /api/orders`
-Creates a new pending order in the database before sending the user to checkout.
-- **Security**: Requires an active Clerk session (enforced by middleware).
-- **Payload**:
-  ```json
-  {
-    "amount": 2500,
-    "items": [...],
-    "shippingDetails": { "name": "John", "address": "..." }
-  }
-  ```
-- **Returns**: `{ orderId: "uuid", razorpayOrderId: "order_xyz123" }`
-
-### `POST /api/orders/submit`
-An internal-only endpoint that submits an order to the Qikink dropshipping API.
-- **Security**: Requires `x-internal-api-key` header to match `INTERNAL_API_KEY`.
-- **Payload**:
-  ```json
-  {
-    "orderId": "uuid"
-  }
-  ```
-- **Action**: Fetches order details from Supabase, maps them to Qikink's format, and POSTs to Qikink. Records any failures into the `error_logs` table.
-- **Returns**: `{ success: true, qikinkOrderId: "..." }`
-
-## 3. Administration
-
-### `POST /api/admin/orders/retry`
-Allows administrators to manually retry an order fulfillment that previously failed (e.g., due to a Qikink timeout).
-- **Security**: Enforced by Clerk middleware (admin role required).
-- **Payload**:
-  ```json
-  {
-    "orderId": "uuid"
-  }
-  ```
-- **Action**: Internally re-invokes the `/api/orders/submit` logic.
-- **Returns**: Success or Failure status.
+There are no Razorpay, Qikink, payment webhook, or automatic fulfillment endpoints.

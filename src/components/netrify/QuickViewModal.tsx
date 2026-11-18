@@ -5,6 +5,7 @@ import Image from "next/image";
 import { X, ShieldCheck, MapPin, Sparkles, Check, ShoppingBag } from "lucide-react";
 import { NetrifyProduct } from "@/data/netrifyProducts";
 import { useCart } from "@/context/CartContext";
+import { useInventory } from "@/context/InventoryContext";
 
 interface QuickViewModalProps {
   product: NetrifyProduct | null;
@@ -16,6 +17,7 @@ export default function QuickViewModal({
   onClose,
 }: QuickViewModalProps) {
   const { addItem } = useCart();
+  const inventory = useInventory();
   const [selectedSize, setSelectedSize] = useState<string>("L");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [added, setAdded] = useState(false);
@@ -38,7 +40,9 @@ export default function QuickViewModal({
 
   if (!product) return null;
 
+  const outOfStock = inventory[product.id] !== undefined && inventory[product.id] <= 0;
   const handleAddToCart = () => {
+    if (outOfStock) return;
     addItem({
       id: product.id,
       slug: product.slug,
@@ -126,8 +130,8 @@ export default function QuickViewModal({
                   ₹{product.originalPrice}
                 </span>
               )}
-              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                In Stock on Campus
+              <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${outOfStock ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-800"}`}>
+                {outOfStock ? "Out of Stock" : "In Stock on Campus"}
               </span>
             </div>
 
@@ -211,13 +215,13 @@ export default function QuickViewModal({
             <button
               type="button"
               onClick={handleAddToCart}
-              disabled={added}
+              disabled={added || outOfStock}
               className={`w-full py-3.5 rounded-2xl font-sans font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${added
                   ? "bg-emerald-600 text-white shadow-emerald-500/25"
                   : "bg-[#ff782e] hover:bg-[#e05b12] text-white shadow-[#ff782e]/25 hover:shadow-xl"
                 }`}
             >
-              {added ? (
+              {outOfStock ? <span>Out of Stock</span> : added ? (
                 <>
                   <Check className="w-5 h-5" />
                   <span>Added To Campus Cart!</span>

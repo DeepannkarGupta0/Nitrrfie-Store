@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- Unwearable Production Schema
 -- Run this in Supabase SQL Editor (Dashboard â†’ SQL Editor)
 -- ============================================================
@@ -6,7 +6,7 @@
 -- â”€â”€â”€ PAYMENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS public.payments (
   id                 UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  gateway            TEXT NOT NULL DEFAULT 'razorpay',
+  gateway            TEXT NOT NULL DEFAULT 'manual_upi',
   gateway_order_id   TEXT UNIQUE NOT NULL,
   gateway_payment_id TEXT UNIQUE,
   amount             INTEGER NOT NULL,
@@ -37,8 +37,6 @@ CREATE TABLE IF NOT EXISTS public.orders (
   subtotal         INTEGER NOT NULL DEFAULT 0,
   total_amount     INTEGER NOT NULL,
   payment_id       UUID REFERENCES public.payments(id) ON DELETE SET NULL,
-  qikink_order_id  TEXT,
-  qikink_response  JSONB,
   retry_count      INTEGER NOT NULL DEFAULT 0,
   error_message    TEXT,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),

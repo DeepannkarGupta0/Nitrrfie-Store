@@ -17,6 +17,12 @@ export default function SearchModal({
   onSelectProduct,
 }: SearchModalProps) {
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -33,13 +39,13 @@ export default function SearchModal({
 
   if (!isOpen) return null;
 
-  const results = query.trim()
+  const results = debouncedQuery.trim()
     ? netrifyProducts.filter(
         (p) =>
-          p.name.toLowerCase().includes(query.toLowerCase()) ||
-          p.club.toLowerCase().includes(query.toLowerCase()) ||
-          p.category.toLowerCase().includes(query.toLowerCase()) ||
-          p.description.toLowerCase().includes(query.toLowerCase())
+          p.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+          p.club.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+          p.category.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+          p.description.toLowerCase().includes(debouncedQuery.toLowerCase())
       )
     : netrifyProducts.slice(0, 4);
 
@@ -82,7 +88,7 @@ export default function SearchModal({
 
           {results.length === 0 ? (
             <div className="text-center py-10 text-slate-400 text-sm">
-              No campus merchandise found matching &quot;{query}&quot;. Try &quot;E-Cell&quot;, &quot;Bomber&quot;, or &quot;F1&quot;.
+              No campus merchandise found matching &quot;{debouncedQuery}&quot;. Try &quot;E-Cell&quot;, &quot;Bomber&quot;, or &quot;F1&quot;.
             </div>
           ) : (
             results.map((product) => (

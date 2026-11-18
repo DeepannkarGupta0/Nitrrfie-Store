@@ -38,7 +38,7 @@ export default function SupportPage() {
     },
     {
       q: "Which payment methods are accepted?",
-      a: "All payments are processed securely through our official Razorpay payment gateway. We accept UPI (Google Pay, PhonePe, Paytm, BHIM), all major Credit & Debit cards (Visa, MasterCard, RuPay), and NetBanking from 50+ Indian banks.",
+      a: "Payments are currently collected through the manual checkout instructions shown at checkout. Orders remain pending until the store team verifies the payment.",
     },
     {
       q: "Can our student club or committee order custom bulk merchandise?",

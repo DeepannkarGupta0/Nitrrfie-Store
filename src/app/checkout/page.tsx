@@ -339,6 +339,7 @@ export default function CheckoutPage() {
         throw new Error(data.error || "Failed to place order.");
       }
 
+      window.dispatchEvent(new Event("inventory:refresh"));
       setConfirmation({
         ...data,
         items: orderPayloadItems,

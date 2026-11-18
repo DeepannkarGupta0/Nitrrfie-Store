@@ -50,7 +50,7 @@ export default function CartSummary() {
           </span>
         </div>
         <p className="text-[11px] text-slate-500">
-          Payment processed securely via Razorpay test mode
+          Manual UPI payment · verified by the store team before order confirmation
         </p>
       </div>
 

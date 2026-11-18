@@ -1,43 +1,22 @@
 # Backend Architecture
 
-Unwearable utilizes Next.js Serverless Functions (`app/api/*`) as its backend layer. This provides a highly scalable, zero-maintenance API layer perfectly suited for Vercel deployment.
+The application uses Next.js server routes, Clerk authentication, and Supabase PostgreSQL.
 
-## Core API Routes
+## Order lifecycle
 
-The backend is logically separated into three domains:
-- `/api/orders`: Standard user-facing order creation and retrieval.
-- `/api/payment`: Payment processing and webhook endpoints.
-- `/api/admin`: Administrative endpoints for managing products, templates, and overriding order states.
+1. A signed-in customer submits checkout details and a UPI reference.
+2. The server validates each product and price against `src/data/netrifyProducts.ts`.
+3. Supabase atomically reserves requested inventory using `reserve_inventory`.
+4. The order and payment claim are stored as `pending` / `created` with `verified=false`.
+5. Store staff check the actual bank statement and update the order to `paid` from the Admin Dashboard. This updates the payment record to `captured` / `verified=true`.
+6. Staff process and deliver the order manually, then mark it `fulfilled`. Cancellation releases reserved stock.
 
-## Security & Middleware
+A UTR or uploaded screenshot is a customer-provided claim, not proof of settlement.
 
-All routes are protected by Clerk Middleware (`src/proxy.ts`), which acts as an edge-level proxy.
+## Roles
 
-### Route Protection
-1. **Public Routes**: The homepage, product pages, and shop are completely public.
-2. **Protected Routes**: The `/account` and `/admin` paths enforce active user sessions.
-3. **Webhook Bypasses**: Specific API routes (like `/api/payment/webhook`) are configured in the middleware as explicitly public. Security for these routes is handled at the controller level via payload signatures (e.g., Razorpay HMAC).
+Clerk `publicMetadata.role` supports `customer` (default), `admin`, and `super_admin`. The one-time `scripts/bootstrap-admin.mjs` script assigns the first Super Admin to an existing Clerk user. Only Super Admins can promote other verified existing users. Every admin API validates the role server-side.
 
-### Internal API Key
-Certain serverless endpoints must be called by other internal systems (e.g., triggering Qikink order submission asynchronously). These routes are protected by an `INTERNAL_API_KEY`. The backend checks `request.headers.get('x-internal-api-key')` against the environment variable to ensure only authorized edge functions can trigger these processes.
+## Inventory
 
-## Third-Party Integrations
-
-### Razorpay Payments
-The backend creates orders using the Razorpay Node SDK. 
-The crucial component is the `/api/payment/webhook` route, which:
-1. Receives the `payment.captured` event.
-2. Validates the signature using `RAZORPAY_WEBHOOK_SECRET`.
-3. Updates the Supabase order status using the `service_role` key to bypass RLS.
-4. Triggers the internal Qikink fulfillment API.
-
-### Qikink Fulfillment
-Because Vercel serverless functions freeze execution the moment an HTTP response is sent, the Qikink order submission process utilizes Vercel's `waitUntil()` utility.
-
-When a webhook arrives:
-1. The backend immediately responds `200 OK` to Razorpay (preventing retries and timeouts).
-2. The heavy lifting (contacting Qikink, parsing responses, saving tracking IDs) is queued via `waitUntil()`, allowing it to resolve in the background before the Lambda spins down.
-
-## Error Handling
-
-All backend routes follow a strict `try-catch` pattern, utilizing a custom `QikinkError` class and logging critical failures into a dedicated `error_logs` table in Supabase. This allows admins to retry failed fulfillments without requiring manual database intervention.
+The `inventory` table stores one non-negative quantity per product ID. The public API exposes only product stock; write operations require an admin session. Run the inventory migration before using the dashboard.

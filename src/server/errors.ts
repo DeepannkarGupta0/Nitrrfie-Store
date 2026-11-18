@@ -38,10 +38,3 @@ export class PaymentError extends Error {
   }
 }
 
-export class QikinkError extends Error {
-  status = 502;
-  constructor(message: string) {
-    super(message);
-    this.name = 'QikinkError';
-  }
-}
